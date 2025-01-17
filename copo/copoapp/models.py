@@ -1,4 +1,3 @@
-
 from django.db import models
 
 
@@ -32,8 +31,8 @@ class Programme(models.Model):
 
 class Batch(models.Model):
     batch_id = models.AutoField(primary_key=True)
-    course_id = models.IntegerField()  # Replace with ForeignKey if Course model is added
-    faculty_id = models.IntegerField()  # Replace with ForeignKey if Faculty model is added
+    course_id = models.IntegerField()  # Replace with ForeignKey if the Course model is defined
+    faculty_id = models.IntegerField()  # Replace with ForeignKey if the Faculty model is defined
     year = models.IntegerField()
     part = models.CharField(max_length=50)
     active = models.BooleanField()
@@ -55,9 +54,34 @@ class Student(models.Model):
         return self.name
 
 
+class Faculty(models.Model):
+    faculty_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    dept = models.ForeignKey(Department, on_delete=models.CASCADE)
+    email = models.EmailField(unique=True)
+    phone_no = models.CharField(max_length=15)
+
+    def __str__(self):
+        return self.name
+
+
+class Course(models.Model):
+    course_id = models.AutoField(primary_key=True)
+    course_code = models.CharField(max_length=50, unique=True)
+    dept = models.ForeignKey(Department, on_delete=models.CASCADE)
+    semester = models.IntegerField()
+    credits = models.IntegerField()
+    no_of_cos = models.IntegerField()
+    programme = models.ForeignKey(Programme, on_delete=models.CASCADE)
+    syllabus_year = models.IntegerField()
+
+    def __str__(self):
+        return self.course_code
+
+
 class CO(models.Model):
     co_id = models.AutoField(primary_key=True)
-    course_id = models.IntegerField()  # Replace with ForeignKey if Course model is added
+    course = models.ForeignKey(Course, on_delete=models.CASCADE,null=True, blank=True)
     co_label = models.CharField(max_length=255)
     co_description = models.TextField()
     remember = models.IntegerField()
@@ -175,7 +199,18 @@ class ExamSection(models.Model):
     no_of_questions_to_be_answered = models.IntegerField()
 
 
+class QuestionBank(models.Model):
+    question_id = models.AutoField(primary_key=True)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    co = models.ForeignKey(CO, on_delete=models.CASCADE)
+    question_text = models.TextField()
+
+    def __str__(self):
+        return f"Question {self.question_id}"
+
+
 class ExamQuestions(models.Model):
     q_id = models.AutoField(primary_key=True)
     section = models.ForeignKey(ExamSection, on_delete=models.CASCADE)
+    question_bank = models.ForeignKey(QuestionBank, on_delete=models.CASCADE)
 
