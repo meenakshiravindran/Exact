@@ -29,17 +29,6 @@ class Programme(models.Model):
         return self.programme_name
 
 
-class Batch(models.Model):
-    batch_id = models.AutoField(primary_key=True)
-    course_id = models.IntegerField()  # Replace with ForeignKey if the Course model is defined
-    faculty_id = models.IntegerField()  # Replace with ForeignKey if the Faculty model is defined
-    year = models.IntegerField()
-    part = models.CharField(max_length=50)
-    active = models.BooleanField()
-
-    def __str__(self):
-        return f"Batch {self.year}"
-
 
 class Student(models.Model):
     student_id = models.AutoField(primary_key=True)
@@ -93,6 +82,17 @@ class CO(models.Model):
 
     def __str__(self):
         return self.co_label
+
+class Batch(models.Model):
+    batch_id = models.AutoField(primary_key=True)
+    course_id = models.ForeignKey(Course, on_delete=models.CASCADE,null=True, blank=True)  
+    faculty_id = models.ForeignKey(Faculty,on_delete=models.CASCADE)
+    year = models.IntegerField()
+    part = models.CharField(max_length=50)
+    active = models.BooleanField()
+
+    def __str__(self):
+        return f"Batch {self.year}"
 
 
 class PO(models.Model):
@@ -193,7 +193,7 @@ class InternalMarks(models.Model):
 
 class ExamSection(models.Model):
     section_id = models.AutoField(primary_key=True)
-    exam_id = models.IntegerField()  # Replace with ForeignKey if needed
+    internal_exam = models.ForeignKey(InternalExam, on_delete=models.CASCADE)
     section_name = models.CharField(max_length=255)
     no_of_questions = models.IntegerField()
     no_of_questions_to_be_answered = models.IntegerField()
