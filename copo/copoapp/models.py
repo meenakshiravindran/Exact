@@ -29,18 +29,18 @@ class Programme(models.Model):
         return self.programme_name
 
 
-
-class Student(models.Model):
-    student_id = models.AutoField(primary_key=True)
-    register_no = models.CharField(max_length=50, unique=True)
-    name = models.CharField(max_length=255)
+class Course(models.Model):
+    course_id = models.AutoField(primary_key=True)
+    course_code = models.CharField(max_length=50, unique=True)
+    dept = models.ForeignKey(Department, on_delete=models.CASCADE)
+    semester = models.IntegerField()
+    credits = models.IntegerField()
+    no_of_cos = models.IntegerField()
     programme = models.ForeignKey(Programme, on_delete=models.CASCADE)
-    year_of_admission = models.IntegerField()
-    phone_number = models.CharField(max_length=15)
-    email = models.EmailField()
+    syllabus_year = models.IntegerField()
 
     def __str__(self):
-        return self.name
+        return self.course_code
 
 
 class Faculty(models.Model):
@@ -54,18 +54,30 @@ class Faculty(models.Model):
         return self.name
 
 
-class Course(models.Model):
-    course_id = models.AutoField(primary_key=True)
-    course_code = models.CharField(max_length=50, unique=True)
-    dept = models.ForeignKey(Department, on_delete=models.CASCADE)
-    semester = models.IntegerField()
-    credits = models.IntegerField()
-    no_of_cos = models.IntegerField()
-    programme = models.ForeignKey(Programme, on_delete=models.CASCADE)
-    syllabus_year = models.IntegerField()
+class Batch(models.Model):
+    batch_id = models.AutoField(primary_key=True)
+    course_id = models.ForeignKey(Course, on_delete=models.CASCADE,null=True, blank=True)  
+    faculty_id = models.ForeignKey(Faculty,on_delete=models.CASCADE)
+    year = models.IntegerField()
+    part = models.CharField(max_length=50)
+    active = models.BooleanField()
 
     def __str__(self):
-        return self.course_code
+        return f"Batch {self.year}"
+
+
+class Student(models.Model):
+    student_id = models.AutoField(primary_key=True)
+    register_no = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=255)
+    programme = models.ForeignKey(Programme, on_delete=models.CASCADE)
+    year_of_admission = models.IntegerField()
+    phone_number = models.CharField(max_length=15)
+    email = models.EmailField()
+
+    def __str__(self):
+        return self.name
+
 
 
 class CO(models.Model):
@@ -82,17 +94,6 @@ class CO(models.Model):
 
     def __str__(self):
         return self.co_label
-
-class Batch(models.Model):
-    batch_id = models.AutoField(primary_key=True)
-    course_id = models.ForeignKey(Course, on_delete=models.CASCADE,null=True, blank=True)  
-    faculty_id = models.ForeignKey(Faculty,on_delete=models.CASCADE)
-    year = models.IntegerField()
-    part = models.CharField(max_length=50)
-    active = models.BooleanField()
-
-    def __str__(self):
-        return f"Batch {self.year}"
 
 
 class PO(models.Model):
@@ -213,4 +214,3 @@ class ExamQuestions(models.Model):
     q_id = models.AutoField(primary_key=True)
     section = models.ForeignKey(ExamSection, on_delete=models.CASCADE)
     question_bank = models.ForeignKey(QuestionBank, on_delete=models.CASCADE)
-
