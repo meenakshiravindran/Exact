@@ -56,7 +56,7 @@ class Faculty(models.Model):
 
 class Batch(models.Model):
     batch_id = models.AutoField(primary_key=True)
-    course_id = models.ForeignKey(Course, on_delete=models.CASCADE,null=True, blank=True)  
+    course = models.ForeignKey(Course, on_delete=models.CASCADE,null=True, blank=True)  
     faculty_id = models.ForeignKey(Faculty,on_delete=models.CASCADE)
     year = models.IntegerField()
     part = models.CharField(max_length=50)
