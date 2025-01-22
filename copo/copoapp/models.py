@@ -161,33 +161,33 @@ class InternalExam(models.Model):
         return f"Internal Exam {self.int_exam_id}"
 
 
-class ExternalMarks(models.Model):
+class ExternalMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    external_exam = models.ForeignKey(ExternalExam, on_delete=models.CASCADE)
+    external_exam = models.ForeignKey(ExternalExam, on_delete=models.CASCADE, null=True, blank=True)
     marks = models.IntegerField()
 
 
-class VivaMarks(models.Model):
+class VivaMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    viva = models.ForeignKey(Viva, on_delete=models.CASCADE)
+    viva = models.ForeignKey(Viva, on_delete=models.CASCADE, null=True, blank=True)
     marks = models.IntegerField()
 
 
-class QuizMarks(models.Model):
+class QuizMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, null=True, blank=True) #Once all existing rows have valid quiz values, make the field non-nullable again by removing null=True, blank=True and running migrations.
     marks = models.IntegerField()
 
 
-class AssignmentMarks(models.Model):
+class AssignmentMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, null=True, blank=True)
     marks = models.IntegerField()
 
 
-class InternalMarks(models.Model):
+class InternalMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    internal_exam = models.ForeignKey(InternalExam, on_delete=models.CASCADE)
+    internal_exam = models.ForeignKey(InternalExam, on_delete=models.CASCADE, null=True, blank=True)
     marks = models.IntegerField()
 
 
@@ -209,7 +209,7 @@ class QuestionBank(models.Model):
         return f"Question {self.question_id}"
 
 
-class ExamQuestions(models.Model):
+class ExamQuestion(models.Model):
     q_id = models.AutoField(primary_key=True)
     section = models.ForeignKey(ExamSection, on_delete=models.CASCADE)
     question_bank = models.ForeignKey(QuestionBank, on_delete=models.CASCADE)
