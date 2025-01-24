@@ -7,19 +7,45 @@ from django.http import JsonResponse
 import json
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.validators import validate_email
-from .models import Faculty, Department, Student, Programme, Level, Course, Batch
+from .models import (
+    Faculty,
+    Department,
+    Student,
+    Programme,
+    Level,
+    Course,
+    Batch,
+    CustomUser,
+)
 from django.views.decorators.csrf import csrf_exempt
 
 
-class HomeView(APIView):
+class UserRegistrationView(APIView):
+    def post(self, request):
+        data = request.data
+        # Assuming you have data to create user and set role
+        role = data.get("role", "teacher")  # default to teacher if not provided
+        user = CustomUser.objects.create_user(
+            username=data["username"], password=data["password"], role=role
+        )
+        if role == "admin":
+            user.is_staff = True
+            user.is_superuser = True
+            user.save()
+
+        return Response({"message": "User created successfully!"})
+
+
+
+
+class UserProfileView(APIView):
     permission_classes = (IsAuthenticated,)
-
     def get(self, request):
-        content = {
-            "message": "Welcome to the JWT Authentication page using React Js and Django!"
-        }
-        return Response(content)
-
+        user = request.user  # Get the currently authenticated user
+        return Response({
+            "username": user.username,  # Return the username
+            "role": getattr(user, 'role', 'teacher')  # Return the role if it exists
+        })
 
 class LogoutView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -35,7 +61,9 @@ class LogoutView(APIView):
         except Exception as e:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
+
 # Views related to faculty
+
 
 class FacultyView(APIView):
     def post(self, request):
@@ -129,7 +157,8 @@ def delete_faculty(request, faculty_id):
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
-#Get All Faculties name
+
+# Get All Faculties name
 def get_faculty(request):
     try:
         faculty_list = Faculty.objects.all()
@@ -141,7 +170,8 @@ def get_faculty(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
-#Get specific details of faculties
+
+# Get specific details of faculties
 @csrf_exempt
 def get_faculty_details(request, faculty_id):
     if request.method == "GET":
@@ -193,7 +223,8 @@ def add_student(request):
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
-#Views related to Programme
+
+# Views related to Programme
 @csrf_exempt
 def add_programme(request):
     if request.method == "POST":
@@ -218,7 +249,6 @@ def add_programme(request):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
-
 
 
 def get_programmes(request):
@@ -247,7 +277,7 @@ def get_levels(request):
         return JsonResponse({"error": str(e)}, status=400)
 
 
-#Views related to courses
+# Views related to courses
 @csrf_exempt
 def add_course(request):
     if request.method == "POST":
@@ -274,6 +304,7 @@ def add_course(request):
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
+
 # Get all courses
 def get_courses(request):
     try:
@@ -285,8 +316,6 @@ def get_courses(request):
         return JsonResponse(course_data, safe=False, status=200)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
-
-
 
 
 @csrf_exempt
