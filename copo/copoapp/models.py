@@ -29,18 +29,19 @@ class Programme(models.Model):
         return self.programme_name
 
 
-
-class Student(models.Model):
-    student_id = models.AutoField(primary_key=True)
-    register_no = models.CharField(max_length=50, unique=True)
-    name = models.CharField(max_length=255)
+class Course(models.Model):
+    course_id = models.AutoField(primary_key=True)
+    course_code = models.CharField(max_length=50, unique=True)
+    title=models.CharField(max_length=100)
+    dept = models.ForeignKey(Department, on_delete=models.CASCADE)
+    semester = models.IntegerField()
+    credits = models.IntegerField()
+    no_of_cos = models.IntegerField()
     programme = models.ForeignKey(Programme, on_delete=models.CASCADE)
-    year_of_admission = models.IntegerField()
-    phone_number = models.CharField(max_length=15)
-    email = models.EmailField()
+    syllabus_year = models.IntegerField()
 
     def __str__(self):
-        return self.name
+        return self.title
 
 
 class Faculty(models.Model):
@@ -54,18 +55,30 @@ class Faculty(models.Model):
         return self.name
 
 
-class Course(models.Model):
-    course_id = models.AutoField(primary_key=True)
-    course_code = models.CharField(max_length=50, unique=True)
-    dept = models.ForeignKey(Department, on_delete=models.CASCADE)
-    semester = models.IntegerField()
-    credits = models.IntegerField()
-    no_of_cos = models.IntegerField()
-    programme = models.ForeignKey(Programme, on_delete=models.CASCADE)
-    syllabus_year = models.IntegerField()
+class Batch(models.Model):
+    batch_id = models.AutoField(primary_key=True)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)  
+    faculty_id = models.ForeignKey(Faculty,on_delete=models.CASCADE)
+    year = models.IntegerField()
+    part = models.CharField(max_length=50)
+    active = models.BooleanField()
 
     def __str__(self):
-        return self.course_code
+        return f"Batch {self.year}"
+
+
+class Student(models.Model):
+    student_id = models.AutoField(primary_key=True)
+    register_no = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=255)
+    programme = models.ForeignKey(Programme, on_delete=models.CASCADE)
+    year_of_admission = models.IntegerField()
+    phone_number = models.CharField(max_length=15)
+    email = models.EmailField()
+
+    def __str__(self):
+        return self.name
+
 
 
 class CO(models.Model):
@@ -82,17 +95,6 @@ class CO(models.Model):
 
     def __str__(self):
         return self.co_label
-
-class Batch(models.Model):
-    batch_id = models.AutoField(primary_key=True)
-    course_id = models.ForeignKey(Course, on_delete=models.CASCADE,null=True, blank=True)  
-    faculty_id = models.ForeignKey(Faculty,on_delete=models.CASCADE)
-    year = models.IntegerField()
-    part = models.CharField(max_length=50)
-    active = models.BooleanField()
-
-    def __str__(self):
-        return f"Batch {self.year}"
 
 
 class PO(models.Model):
@@ -161,33 +163,33 @@ class InternalExam(models.Model):
         return f"Internal Exam {self.int_exam_id}"
 
 
-class ExternalMarks(models.Model):
+class ExternalMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    external_exam = models.ForeignKey(ExternalExam, on_delete=models.CASCADE)
+    external_exam = models.ForeignKey(ExternalExam, on_delete=models.CASCADE, null=True, blank=True)
     marks = models.IntegerField()
 
 
-class VivaMarks(models.Model):
+class VivaMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    viva = models.ForeignKey(Viva, on_delete=models.CASCADE)
+    viva = models.ForeignKey(Viva, on_delete=models.CASCADE, null=True, blank=True)
     marks = models.IntegerField()
 
 
-class QuizMarks(models.Model):
+class QuizMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, null=True, blank=True) #Once all existing rows have valid quiz values, make the field non-nullable again by removing null=True, blank=True and running migrations.
     marks = models.IntegerField()
 
 
-class AssignmentMarks(models.Model):
+class AssignmentMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, null=True, blank=True)
     marks = models.IntegerField()
 
 
-class InternalMarks(models.Model):
+class InternalMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    internal_exam = models.ForeignKey(InternalExam, on_delete=models.CASCADE)
+    internal_exam = models.ForeignKey(InternalExam, on_delete=models.CASCADE, null=True, blank=True)
     marks = models.IntegerField()
 
 
@@ -209,8 +211,7 @@ class QuestionBank(models.Model):
         return f"Question {self.question_id}"
 
 
-class ExamQuestions(models.Model):
+class ExamQuestion(models.Model):
     q_id = models.AutoField(primary_key=True)
     section = models.ForeignKey(ExamSection, on_delete=models.CASCADE)
     question_bank = models.ForeignKey(QuestionBank, on_delete=models.CASCADE)
-
