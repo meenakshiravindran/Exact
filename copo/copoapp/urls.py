@@ -13,4 +13,7 @@ urlpatterns = [
      path("get-faculty/", views.get_faculty, name="get-faculty"),
      path("get-courses/", views.get_courses, name="get-ourses"),
      path("add-batch/", views.add_batch, name="add-batch"),
+     path('faculties/edit/<int:faculty_id>/', views.edit_faculty, name='edit-faculty'),
+     path('faculties/delete/<int:faculty_id>/', views.delete_faculty, name='delete-faculty'),
+     path('faculties/<int:faculty_id>/', views.get_faculty_details, name='get-faculty-details'),
 ]

@@ -156,6 +156,7 @@ def add_course(request):
             programme = Programme.objects.get(programme_id=data["programme"])
             course = Course.objects.create(
                 course_code=data["course_code"],
+                title=data["title"],
                 dept=dept,
                 semester=data["semester"],
                 credits=data["credits"],
@@ -213,6 +214,57 @@ def add_batch(request):
             return JsonResponse({"faculty_id": "Invalid faculty."}, status=400)
         except Course.DoesNotExist:
             return JsonResponse({"course": "Invalid course."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+@csrf_exempt
+def edit_faculty(request, faculty_id):
+    if request.method == "PUT":
+        data = json.loads(request.body)
+        try:
+            faculty = Faculty.objects.get(faculty_id=faculty_id)
+            if "name" in data:
+                faculty.name = data["name"]
+            if "dept" in data:
+                dept = Department.objects.get(dept_id=data["dept"])
+                faculty.dept = dept
+            faculty.save()
+            return JsonResponse({"message": "Faculty updated successfully."}, status=200)
+        except Faculty.DoesNotExist:
+            return JsonResponse({"error": "Faculty not found."}, status=404)
+        except Department.DoesNotExist:
+            return JsonResponse({"dept": "Invalid department."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+@csrf_exempt
+def delete_faculty(request, faculty_id):
+    if request.method == "DELETE":
+        try:
+            faculty = Faculty.objects.get(faculty_id=faculty_id)
+            faculty.delete()
+            return JsonResponse({"message": "Faculty deleted successfully."}, status=200)
+        except Faculty.DoesNotExist:
+            return JsonResponse({"error": "Faculty not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+ 
+@csrf_exempt
+def get_faculty_details(request, faculty_id):
+    if request.method == "GET":
+        try:
+            faculty = Faculty.objects.get(faculty_id=faculty_id)
+            faculty_data = {
+                "faculty_id": faculty.faculty_id,
+                "name": faculty.name,
+                "dept": faculty.dept.dept_name,  # Including department name for context (optional)
+            }
+            return JsonResponse(faculty_data, status=200)
+        except Faculty.DoesNotExist:
+            return JsonResponse({"error": "Faculty not found."}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
