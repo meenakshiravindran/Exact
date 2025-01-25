@@ -1,5 +1,16 @@
 from django.db import models
 
+from django.contrib.auth.models import AbstractUser
+
+class CustomUser(AbstractUser):
+    ROLE_CHOICES = (
+        ('admin', 'Admin'),
+        ('teacher', 'Teacher'),
+    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='teacher')
+
+    def __str__(self):
+        return self.username
 
 class Department(models.Model):
     dept_id = models.AutoField(primary_key=True)
@@ -32,6 +43,7 @@ class Programme(models.Model):
 class Course(models.Model):
     course_id = models.AutoField(primary_key=True)
     course_code = models.CharField(max_length=50, unique=True)
+    title=models.CharField(max_length=100)
     dept = models.ForeignKey(Department, on_delete=models.CASCADE)
     semester = models.IntegerField()
     credits = models.IntegerField()
@@ -40,7 +52,7 @@ class Course(models.Model):
     syllabus_year = models.IntegerField()
 
     def __str__(self):
-        return self.course_code
+        return self.title
 
 
 class Faculty(models.Model):
@@ -56,7 +68,7 @@ class Faculty(models.Model):
 
 class Batch(models.Model):
     batch_id = models.AutoField(primary_key=True)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE,null=True, blank=True)  
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)  
     faculty_id = models.ForeignKey(Faculty,on_delete=models.CASCADE)
     year = models.IntegerField()
     part = models.CharField(max_length=50)

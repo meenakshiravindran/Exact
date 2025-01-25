@@ -1,7 +1,8 @@
 from django.contrib import admin
 
 # Register your models here.
-from .models import Student, Programme, Course,PO,Department,Level,Batch,Faculty,CO,PSO,ExternalExam,Viva,Quiz,Assignment,InternalExam,ExternalMark,VivaMark,QuizMark,AssignmentMark,InternalMark,ExamSection,QuestionBank,ExamQuestion
+from .models import Student, Programme, Course,PO,Department,Level,Batch,Faculty,CO,PSO,ExternalExam,Viva,Quiz,Assignment,InternalExam,ExternalMark,VivaMark,QuizMark,AssignmentMark,InternalMark,ExamSection,QuestionBank,ExamQuestion,CustomUser
+admin.site.register(CustomUser)
 admin.site.register(Student)
 admin.site.register(Programme)
 admin.site.register(Course)
