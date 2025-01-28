@@ -127,8 +127,12 @@ def edit_faculty(request, faculty_id):
             if "name" in data:
                 faculty.name = data["name"]
             if "dept" in data:
-                dept = Department.objects.get(dept_id=data["dept"])
+                dept = Department.objects.get(dept_name=data["dept"])
                 faculty.dept = dept
+            if "email" in data:
+                faculty.email = data["email"]
+            if "phone" in data:
+                faculty.phone_no = data["phone"]
             faculty.save()
             return JsonResponse(
                 {"message": "Faculty updated successfully."}, status=200
@@ -224,48 +228,6 @@ def add_student(request):
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
 
-# Views related to Programme
-@csrf_exempt
-def add_programme(request):
-    if request.method == "POST":
-        data = json.loads(request.body)
-        try:
-            dept = Department.objects.get(dept_id=data["dept"])
-            level = Level.objects.get(name=data["level"])
-            programme = Programme.objects.create(
-                programme_name=data["programme_name"],
-                dept=dept,
-                no_of_pos=data["no_of_pos"],
-                level=level,
-                duration=data["duration"],
-            )
-            return JsonResponse(
-                {"message": "Programme created successfully."}, status=201
-            )
-        except Department.DoesNotExist:
-            return JsonResponse({"dept": "Invalid department."}, status=400)
-        except Level.DoesNotExist:
-            return JsonResponse({"level": "Invalid level."}, status=400)
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
-    return JsonResponse({"error": "Invalid request method."}, status=405)
-
-
-def get_programmes(request):
-    try:
-        programmes = Programme.objects.all()
-        programmes_data = [
-            {
-                "programme_id": programme.programme_id,
-                "programme_name": programme.programme_name,
-            }
-            for programme in programmes
-        ]
-        return JsonResponse(programmes_data, safe=False, status=200)
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400)
-
-
 def get_levels(request):
     try:
         levels = Level.objects.all()
@@ -277,40 +239,115 @@ def get_levels(request):
         return JsonResponse({"error": str(e)}, status=400)
 
 
-# Views related to courses
+
+# Add a Course
+class CourseView(APIView):
+    def post(self, request):
+        data = request.data
+
+        # Manual validation
+        required_fields = ["title", "dept", "course_code","syllabus_year","programme","no_of_cos","semester","credits"]
+        for field in required_fields:
+            if field not in data:
+                return Response(
+                    {field: "This field is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Check for unique course code
+        if Course.objects.filter(course_code=data["course_code"]).exists():
+            return Response(
+                {"course_code": "A course with this code already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get or create the Department instance
+        try:
+            department = Department.objects.get(dept_name=data["dept"])
+        except ObjectDoesNotExist:
+            return Response(
+                {"department": "The specified department does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        try:
+            programme = Programme.objects.get(programme_name=data["programme"])
+        except ObjectDoesNotExist:
+            return Response(
+                {"programme": "The specified department does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create Course instance
+        course = Course(
+            title=data["title"],
+            dept=department,  # Assign the Department instance
+            course_code=data["course_code"],
+            syllabus_year=data["syllabus_year"],
+            programme=programme,
+            no_of_cos=data["no_of_cos"],
+            semester=data["semester"],
+            credits=data["credits"]
+
+        )
+        course.save()
+
+        return Response(
+            {"message": "Course created successfully."},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# Edit a Course
 @csrf_exempt
-def add_course(request):
-    if request.method == "POST":
+def edit_course(request, course_id):
+    if request.method == "PUT":
         data = json.loads(request.body)
         try:
-            dept = Department.objects.get(dept_id=data["dept"])
-            programme = Programme.objects.get(programme_id=data["programme"])
-            course = Course.objects.create(
-                course_code=data["course_code"],
-                title=data["title"],
-                dept=dept,
-                semester=data["semester"],
-                credits=data["credits"],
-                no_of_cos=data["no_of_cos"],
-                programme=programme,
-                syllabus_year=data["syllabus_year"],
+            course = Course.objects.get(course_id=course_id)
+            if "course_name" in data:
+                course.title = data["course_name"]
+            if "dept" in data:
+                dept = Department.objects.get(dept_name=data["dept"])
+                course.dept = dept
+            if "course_code" in data:
+                course.course_code = data["course_code"]
+            course.save()
+            return JsonResponse(
+                {"message": "Course updated successfully."}, status=200
             )
-            return JsonResponse({"message": "Course created successfully."}, status=201)
+        except Course.DoesNotExist:
+            return JsonResponse({"error": "Course not found."}, status=404)
         except Department.DoesNotExist:
             return JsonResponse({"dept": "Invalid department."}, status=400)
-        except Programme.DoesNotExist:
-            return JsonResponse({"programme": "Invalid programme."}, status=400)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
 
-# Get all courses
+# Delete a Course
+@csrf_exempt
+def delete_course(request, course_id):
+    if request.method == "DELETE":
+        try:
+            course = Course.objects.get(course_id=course_id)
+            course.delete()
+            return JsonResponse(
+                {"message": "Course deleted successfully."}, status=200
+            )
+        except Course.DoesNotExist:
+            return JsonResponse({"error": "Course not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+# Get All Courses
 def get_courses(request):
     try:
         course_list = Course.objects.all()
         course_data = [
-            {"course_id": course.course_id, "course_code": course.course_code}
+            {"course_id": course.course_id, "title": course.title,"dept":course.dept.dept_name}
             for course in course_list
         ]
         return JsonResponse(course_data, safe=False, status=200)
@@ -318,15 +355,41 @@ def get_courses(request):
         return JsonResponse({"error": str(e)}, status=400)
 
 
+# Get Specific Course Details
+@csrf_exempt
+def get_course_details(request, course_id):
+    if request.method == "GET":
+        try:
+            course = Course.objects.get(course_id=course_id)
+            course_data = {
+                "course_id": course.course_id,
+                "title": course.title,
+                "dept": course.dept.dept_name,  # Including department name for context
+                "course_code": course.course_code,
+                "semester":course.semester,
+                "credits":course.credits,
+                "programme":course.programme.programme_name,
+                "syllabus_year":course.syllabus_year,
+                "no_of_cos":course.no_of_cos
+
+            }
+            return JsonResponse(course_data, status=200)
+        except Course.DoesNotExist:
+            return JsonResponse({"error": "Course not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+
+# Add a Batch
 @csrf_exempt
 def add_batch(request):
     if request.method == "POST":
         data = json.loads(request.body)
         try:
             faculty = Faculty.objects.get(faculty_id=data["faculty_id"])
-            course = (
-                Course.objects.get(course_id=data["course"]) if data["course"] else None
-            )
+            course = Course.objects.get(title=data["course"]) if data.get("course") else None
             batch = Batch.objects.create(
                 faculty_id=faculty,
                 course=course,
@@ -339,6 +402,241 @@ def add_batch(request):
             return JsonResponse({"faculty_id": "Invalid faculty."}, status=400)
         except Course.DoesNotExist:
             return JsonResponse({"course": "Invalid course."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+# Edit a Batch
+@csrf_exempt
+def edit_batch(request, batch_id):
+    if request.method == "PUT":
+        data = json.loads(request.body)
+        try:
+            batch = Batch.objects.get(batch_id=batch_id)
+            if "faculty" in data:
+                faculty = Faculty.objects.get(name=data["faculty"])
+                batch.faculty_id = faculty
+            if "course" in data:
+                course = Course.objects.get(title=data["course"])
+                batch.course = course
+            if "year" in data:
+                batch.year = data["year"]
+            if "part" in data:
+                batch.part = data["part"]
+            if "active" in data:
+                batch.active = data["active"]
+            batch.save()
+            return JsonResponse({"message": "Batch updated successfully."}, status=200)
+        except Batch.DoesNotExist:
+            return JsonResponse({"error": "Batch not found."}, status=404)
+        except Faculty.DoesNotExist:
+            return JsonResponse({"faculty_id": "Invalid faculty."}, status=400)
+        except Course.DoesNotExist:
+            return JsonResponse({"course": "Invalid course."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+# Delete a Batch
+@csrf_exempt
+def delete_batch(request, batch_id):
+    if request.method == "DELETE":
+        try:
+            batch = Batch.objects.get(batch_id=batch_id)
+            batch.delete()
+            return JsonResponse({"message": "Batch deleted successfully."}, status=200)
+        except Batch.DoesNotExist:
+            return JsonResponse({"error": "Batch not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+# Get All Batches
+def get_batches(request):
+    try:
+        batch_list = Batch.objects.all()
+        batch_data = [
+            {
+                "batch_id": batch.batch_id,
+                "faculty": batch.faculty_id.name,
+                "course": batch.course.title if batch.course else None,
+                "year": batch.year,
+                "part": batch.part,
+                "active": batch.active,
+            }
+            for batch in batch_list
+        ]
+        return JsonResponse(batch_data, safe=False, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+
+# Get Specific Batch Details
+@csrf_exempt
+def get_batch_details(request, batch_id):
+    if request.method == "GET":
+        try:
+            batch = Batch.objects.get(batch_id=batch_id)
+            batch_data = {
+                "batch_id": batch.batch_id,
+                "faculty": batch.faculty_id.name,
+                "course": batch.course.title if batch.course else None,
+                "year": batch.year,
+                "part": batch.part,
+                "active": batch.active,
+            }
+            return JsonResponse(batch_data, status=200)
+        except Batch.DoesNotExist:
+            return JsonResponse({"error": "Batch not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+# Add a Programme
+class ProgrammeView(APIView):
+    def post(self, request):
+        data = request.data
+
+        # Manual validation
+        required_fields = ["programme_name", "department", "level", "no_of_pos", "duration"]
+        for field in required_fields:
+            if field not in data:
+                return Response(
+                    {field: "This field is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Check for unique programme name
+        if Programme.objects.filter(programme_name=data["programme_name"]).exists():
+            return Response(
+                {"programme_name": "A programme with this name already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get or create the Department instance
+        try:
+            department = Department.objects.get(dept_name=data["department"])
+        except ObjectDoesNotExist:
+            return Response(
+                {"department": "The specified department does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get or create the Level instance
+        try:
+            level = Level.objects.get(name=data["level"])
+        except ObjectDoesNotExist:
+            return Response(
+                {"level": "The specified level does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create Programme instance
+        programme = Programme(
+            programme_name=data["programme_name"],
+            dept=department,  # Assign the Department instance
+            no_of_pos=data["no_of_pos"],
+            level=level,  # Assign the Level instance
+            duration=data["duration"],
+        )
+        programme.save()
+
+        return Response(
+            {"message": "Programme created successfully."},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# Edit a Programme
+@csrf_exempt
+def edit_programme(request, programme_id):
+    if request.method == "PUT":
+        data = json.loads(request.body)
+        try:
+            programme = Programme.objects.get(programme_id=programme_id)
+            if "programme_name" in data:
+                programme.programme_name = data["programme_name"]
+            if "dept" in data:
+                dept = Department.objects.get(dept_name=data["dept"])
+                programme.dept = dept
+            if "level" in data:
+                level = Level.objects.get(name=data["level"])
+                programme.level = level
+            if "no_of_pos" in data:
+                programme.no_of_pos = data["no_of_pos"]
+            if "duration" in data:
+                programme.duration = data["duration"]
+            programme.save()
+            return JsonResponse(
+                {"message": "Programme updated successfully."}, status=200
+            )
+        except Programme.DoesNotExist:
+            return JsonResponse({"error": "Programme not found."}, status=404)
+        except Department.DoesNotExist:
+            return JsonResponse({"dept": "Invalid department."}, status=400)
+        except Level.DoesNotExist:
+            return JsonResponse({"level": "Invalid level."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+# Delete a Programme
+@csrf_exempt
+def delete_programme(request, programme_id):
+    if request.method == "DELETE":
+        try:
+            programme = Programme.objects.get(programme_id=programme_id)
+            programme.delete()
+            return JsonResponse(
+                {"message": "Programme deleted successfully."}, status=200
+            )
+        except Programme.DoesNotExist:
+            return JsonResponse({"error": "Programme not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+# Get All Programmes
+def get_programmes(request):
+    try:
+        programme_list = Programme.objects.all()
+        programme_data = [
+            {
+                "programme_id": programme.programme_id,
+                "programme_name": programme.programme_name,
+                "department": programme.dept.dept_name,
+                "level": programme.level.name,
+            }
+            for programme in programme_list
+        ]
+        return JsonResponse(programme_data, safe=False, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+
+# Get Specific Programme Details
+@csrf_exempt
+def get_programme_details(request, programme_id):
+    if request.method == "GET":
+        try:
+            programme = Programme.objects.get(programme_id=programme_id)
+            programme_data = {
+                "programme_id": programme.programme_id,
+                "programme_name": programme.programme_name,
+                "department": programme.dept.dept_name,
+                "level": programme.level.name,
+                "no_of_pos": programme.no_of_pos,
+                "duration": programme.duration,
+            }
+            return JsonResponse(programme_data, status=200)
+        except Programme.DoesNotExist:
+            return JsonResponse({"error": "Programme not found."}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
