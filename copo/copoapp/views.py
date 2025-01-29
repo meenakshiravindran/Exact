@@ -16,6 +16,7 @@ from .models import (
     Course,
     Batch,
     CustomUser,
+    PO,
     CO,
 )
 from django.views.decorators.csrf import csrf_exempt
@@ -728,6 +729,118 @@ def delete_student(request,student_id):
             )
         except Student.DoesNotExist:
             return JsonResponse({"error": "Student not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+class POView(APIView):
+    def post(self, request):
+        data = request.data
+
+        # Manual validation
+        required_fields = [ "description", "level","po_number"]
+        for field in required_fields:
+            if field not in data:
+                return Response(
+                    {field: "This field is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Get Level instance
+        try:
+            level = Level.objects.get(name=data["level"])
+        except ObjectDoesNotExist:
+            return Response(
+                {"level": "The specified level does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create PO instance
+        po = PO(
+            pos_description=data["description"],
+            level=level,
+            po_label=data['po_number']
+        )
+        po.save()
+
+        return Response(
+            {"message": "Programme Outcome created successfully."},
+            status=status.HTTP_201_CREATED,
+        )
+
+@csrf_exempt
+def edit_po(request, po_id):
+    if request.method == "PUT":
+        data = json.loads(request.body)
+        try:
+            po = PO.objects.get(id=po_id)
+            if "programme" in data:
+                programme = Programme.objects.get(programme_name=data["programme"])
+                po.programme = programme
+            if "pos_description" in data:
+                po.pos_description = data["pos_description"]
+            if "level" in data:
+                level = Level.objects.get(id=data["level"])
+                po.level = level
+            po.save()
+            return JsonResponse(
+                {"message": "Programme Outcome updated successfully."}, status=200
+            )
+        except PO.DoesNotExist:
+            return JsonResponse({"error": "Programme Outcome not found."}, status=404)
+        except Programme.DoesNotExist:
+            return JsonResponse({"programme": "Invalid programme."}, status=400)
+        except Level.DoesNotExist:
+            return JsonResponse({"level": "Invalid level."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+@csrf_exempt
+def delete_po(request, po_id):
+    if request.method == "DELETE":
+        try:
+            po = PO.objects.get(id=po_id)
+            po.delete()
+            return JsonResponse(
+                {"message": "Programme Outcome deleted successfully."}, status=200
+            )
+        except PO.DoesNotExist:
+            return JsonResponse({"error": "Programme Outcome not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+def get_pos(request):
+    try:
+        pos_list = PO.objects.all()
+        pos_data = [
+            {
+                "id": po.id,
+                "programme": po.programme.programme_name,
+                "pos_description": po.pos_description,
+                "level": po.level.id,
+            }
+            for po in pos_list
+        ]
+        return JsonResponse(pos_data, safe=False, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+@csrf_exempt
+def get_po_details(request, po_id):
+    if request.method == "GET":
+        try:
+            po = PO.objects.get(id=po_id)
+            po_data = {
+                "id": po.id,
+                "programme": po.programme.programme_name,
+                "pos_description": po.pos_description,
+                "level": po.level.id,
+            }
+            return JsonResponse(po_data, status=200)
+        except PO.DoesNotExist:
+            return JsonResponse({"error": "Programme Outcome not found."}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
