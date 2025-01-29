@@ -110,7 +110,7 @@ class CO(models.Model):
 
 class PO(models.Model):
     id = models.AutoField(primary_key=True)
-    programme = models.ForeignKey(Programme, on_delete=models.CASCADE)
+    po_label=models.CharField(max_length=255,null=True,blank=True)
     pos_description = models.TextField()
     level = models.ForeignKey(Level, on_delete=models.CASCADE)
 

@@ -29,7 +29,12 @@ urlpatterns = [
      path('batches/<int:batch_id>/', views.get_batch_details, name='get_batch_details'),
      path('add-programme/', views.ProgrammeView.as_view(), name='add_programme'),
      path('programme/edit/<int:programme_id>/', views.edit_programme, name='edit_programme'),
-     path('programme/<int:programme_id>/delete/', views.delete_programme, name='delete_programme'),
+     path('programmes/delete/<int:programme_id>/', views.delete_programme, name='delete_programme'),
      path('get-programme/', views.get_programmes, name='get_programmes'),
      path('programme/<int:programme_id>/', views.get_programme_details, name='get_programme_details'),
+     path('add-pos/', views.POView.as_view(), name='add-po'),
+     path('pos/edit/<int:po_id>/', views.edit_po, name='edit-po'),
+     path('pos/delete/<int:po_id>/', views.delete_po, name='delete-po'),
+     path('get-pos/', views.get_pos, name='get-po'),
+     path('pos/<int:po_id>/', views.get_po_details, name='get-po-details'),
 ]
