@@ -16,6 +16,7 @@ from .models import (
     Course,
     Batch,
     CustomUser,
+    CO,
 )
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
@@ -727,6 +728,139 @@ def delete_student(request,student_id):
             )
         except Student.DoesNotExist:
             return JsonResponse({"error": "Student not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+# Add a CO
+class COView(APIView):
+    def post(self, request):
+        data = request.data
+
+        # Manual validation
+        required_fields = ["bloom_taxonomy", "co_label", "co_description", "course"]
+        for field in required_fields:
+            if field not in data:
+                return Response(
+                    {field: "This field is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Check if course exists
+        try:
+            course = Course.objects.get(title=data["course"])
+        except ObjectDoesNotExist:
+            return Response(
+                {"course": "The specified course does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Initialize all Bloom's Taxonomy fields to 0
+        bloom_taxonomy_fields = ["remember", "understand", "apply", "analyze", "evaluate", "create"]
+        taxonomy_values = {field: 0 for field in bloom_taxonomy_fields}
+
+        # Ensure the selected taxonomy field is valid
+        selected_taxonomy = data["bloom_taxonomy"].lower()
+        if selected_taxonomy not in taxonomy_values:
+            return Response(
+                {"bloom_taxonomy": "Invalid taxonomy selection."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Set the selected taxonomy field to 1
+        taxonomy_values[selected_taxonomy] = 1
+
+        # Create Course Outcome instance
+        co = CO(
+            co_label=data["co_label"],
+            co_description=data["co_description"],
+            course=course,
+            **taxonomy_values,  # Unpacking the dictionary to assign values dynamically
+        )
+        co.save()
+
+        return Response(
+            {"message": "Course Outcome created successfully."},
+            status=status.HTTP_201_CREATED,
+        )
+
+# Edit a CO
+@csrf_exempt
+def edit_co(request, co_id):
+    if request.method == "PUT":
+        data = json.loads(request.body)
+        try:
+            co = CO.objects.get(co_id=co_id)
+            if "co_number" in data:
+                co.co_number = data["co_number"]
+            if "description" in data:
+                co.description = data["description"]
+            if "course_id" in data:
+                course = Course.objects.get(course_id=data["course_id"])
+                co.course = course
+            co.save()
+            return JsonResponse(
+                {"message": "Course Outcome updated successfully."}, status=200
+            )
+        except CO.DoesNotExist:
+            return JsonResponse({"error": "Course Outcome not found."}, status=404)
+        except Course.DoesNotExist:
+            return JsonResponse({"course_id": "Invalid course ID."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+# Delete a CO
+@csrf_exempt
+def delete_co(request, co_id):
+    if request.method == "DELETE":
+        try:
+            co = CO.objects.get(co_id=co_id)
+            co.delete()
+            return JsonResponse(
+                {"message": "Course Outcome deleted successfully."}, status=200
+            )
+        except CO.DoesNotExist:
+            return JsonResponse({"error": "Course Outcome not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+# Get All COs
+def get_cos(request):
+    try:
+        co_list = CO.objects.all()
+        co_data = [
+            {
+                "co_id": co.co_id,
+                "co_number": co.co_number,
+                "description": co.description,
+                "course": co.course.title,
+            }
+            for co in co_list
+        ]
+        return JsonResponse(co_data, safe=False, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+
+# Get Specific CO Details
+@csrf_exempt
+def get_co_details(request, co_id):
+    if request.method == "GET":
+        try:
+            co = CO.objects.get(co_id=co_id)
+            co_data = {
+                "co_id": co.co_id,
+                "co_number": co.co_number,
+                "description": co.description,
+                "course": co.course.title,
+            }
+            return JsonResponse(co_data, status=200)
+        except CO.DoesNotExist:
+            return JsonResponse({"error": "Course Outcome not found."}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
