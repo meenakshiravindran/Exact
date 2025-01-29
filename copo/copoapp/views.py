@@ -18,24 +18,40 @@ from .models import (
     CustomUser,
 )
 from django.views.decorators.csrf import csrf_exempt
-
-
+from django.shortcuts import get_object_or_404
 class UserRegistrationView(APIView):
     def post(self, request):
         data = request.data
-        # Assuming you have data to create user and set role
-        role = data.get("role", "teacher")  # default to teacher if not provided
+        
+        # Extracting user details from request data
+        first_name = data.get("first_name", "")
+        last_name = data.get("last_name", "")
+        email = data.get("email", "")
+        username = data.get("username")
+        password = data.get("password")
+        role = data.get("role", "teacher")  # Default role is "teacher"
+
+        # Validate required fields
+        if not all([username, password, email, first_name, last_name]):
+            return Response({"error": "All fields are required."}, status=400)
+
+        # Create user
         user = CustomUser.objects.create_user(
-            username=data["username"], password=data["password"], role=role
+            username=username, 
+            password=password,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            role=role
         )
+
+        # Assign admin privileges if role is "admin"
         if role == "admin":
             user.is_staff = True
             user.is_superuser = True
             user.save()
 
-        return Response({"message": "User created successfully!"})
-
-
+        return Response({"message": "User created successfully!"}, status=201)
 
 
 class UserProfileView(APIView):
@@ -44,7 +60,8 @@ class UserProfileView(APIView):
         user = request.user  # Get the currently authenticated user
         return Response({
             "username": user.username,  # Return the username
-            "role": getattr(user, 'role', 'teacher')  # Return the role if it exists
+            "role": getattr(user, 'role', 'teacher') , # Return the role if it exists
+            "full_name": user.get_full_name() ,
         })
 
 class LogoutView(APIView):
@@ -637,6 +654,79 @@ def get_programme_details(request, programme_id):
             return JsonResponse(programme_data, status=200)
         except Programme.DoesNotExist:
             return JsonResponse({"error": "Programme not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+@csrf_exempt
+def edit_student(request, student_id):
+    if request.method == "PUT":
+        data = json.loads(request.body)
+        try:
+            student = Student.objects.get(student_id=student_id)
+            
+            if "name" in data:
+                student.name = data["name"]
+            if "register_no" in data:
+                student.register_no = data["register_no"]
+            if "programme" in data:
+                programme = Programme.objects.get(programme_name=data["programme"])  # Assuming Programme model has an ID field
+                student.programme = programme
+            if "year_of_admission" in data:
+                student.year_of_admission = data["year_of_admission"]
+            if "phone_number" in data:
+                student.phone_number = data["phone_number"]
+            if "email" in data:
+                student.email = data["email"]
+            
+            student.save()
+            return JsonResponse({"message": "Student updated successfully."}, status=200)
+
+        except Student.DoesNotExist:
+            return JsonResponse({"error": "Student not found."}, status=404)
+        except Programme.DoesNotExist:
+            return JsonResponse({"error": "Invalid programme."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+@csrf_exempt
+def get_student_details(request, student_id):
+    if request.method == "GET":
+        student = get_object_or_404(Student, student_id=student_id)
+        return JsonResponse({
+            "name": student.name,
+            "register_no": student.register_no,
+            "programme": student.programme.programme_name,  # Assuming Programme model has an ID field
+            "year_of_admission": student.year_of_admission,
+            "phone_number": student.phone_number,
+            "email": student.email,
+        }, status=200)
+    
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+def get_students_by_programme(request, programme_id):
+    if request.method == "GET":
+        programme = get_object_or_404(Programme, programme_id=programme_id)
+        students = Student.objects.filter(programme=programme).values(
+            "student_id", "name", "register_no", "year_of_admission", "phone_number", "email"
+        )
+        return JsonResponse(list(students), safe=False, status=200)
+    
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+@csrf_exempt
+def delete_student(request,student_id):
+    if request.method=="DELETE":
+        try:
+            student = Student.objects.get(student_id=student_id)
+            student.delete()
+            return JsonResponse(
+                {"message": "Student deleted successfully."}, status=200
+            )
+        except Student.DoesNotExist:
+            return JsonResponse({"error": "Student not found."}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
