@@ -37,4 +37,9 @@ urlpatterns = [
      path('pos/delete/<int:po_id>/', views.delete_po, name='delete-po'),
      path('get-pos/', views.get_pos, name='get-po'),
      path('pos/<int:po_id>/', views.get_po_details, name='get-po-details'),
+     path('add-cos/',views.COView.as_view(),name="add-co"),
+     path('cos/edit/<int:co_id>/',views.edit_co,name="edit-co"),
+     path('cos/delete/<int:co_id>/',views.delete_co,name="delete-co"),
+     path('get-cos/',views.get_cos,name="get-co"),
+     path('cos/<int:co_id>/',views.get_co_details,name="get-co-details"),
 ]
