@@ -18,6 +18,7 @@ from .models import (
     CustomUser,
     PO,
     CO,
+    PSO,
 )
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
@@ -324,13 +325,21 @@ def edit_course(request, course_id):
         data = json.loads(request.body)
         try:
             course = Course.objects.get(course_id=course_id)
-            if "course_name" in data:
-                course.title = data["course_name"]
+            if "title" in data:
+                course.title = data["title"]
             if "dept" in data:
                 dept = Department.objects.get(dept_name=data["dept"])
                 course.dept = dept
             if "course_code" in data:
                 course.course_code = data["course_code"]
+            if "credits" in data:
+                course.credits = data["credits"]
+            if "syllabus_year" in data:
+                course.syllabus_year = data["syllabus_year"]
+            if "no_of_cos" in data:
+                course.no_of_cos = data["no_of_cos"]
+            if "programme" in data:
+                course.programme.programme_name = data["programme"]
             course.save()
             return JsonResponse(
                 {"message": "Course updated successfully."}, status=200
@@ -811,15 +820,15 @@ def delete_po(request, po_id):
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
-def get_pos(request):
+def get_pos(request,level_id):
     try:
+        level = get_object_or_404(Level, level_id=level_id)
         pos_list = PO.objects.all()
         pos_data = [
             {
                 "id": po.id,
-                "programme": po.programme.programme_name,
                 "pos_description": po.pos_description,
-                "level": po.level.id,
+                "level": po.level.level_id,
             }
             for po in pos_list
         ]
@@ -834,9 +843,8 @@ def get_po_details(request, po_id):
             po = PO.objects.get(id=po_id)
             po_data = {
                 "id": po.id,
-                "programme": po.programme.programme_name,
                 "pos_description": po.pos_description,
-                "level": po.level.id,
+                "level": po.level.level_id,
             }
             return JsonResponse(po_data, status=200)
         except PO.DoesNotExist:
@@ -896,21 +904,37 @@ class COView(APIView):
             {"message": "Course Outcome created successfully."},
             status=status.HTTP_201_CREATED,
         )
+    
 
-# Edit a CO
 @csrf_exempt
 def edit_co(request, co_id):
     if request.method == "PUT":
         data = json.loads(request.body)
         try:
-            co = CO.objects.get(co_id=co_id)
-            if "co_number" in data:
-                co.co_number = data["co_number"]
-            if "description" in data:
-                co.description = data["description"]
+            co = CO.objects.get(co_id=co_id)  # Fetching CO by co_id
+            # Update CO label
+            if "co_label" in data:
+                co.co_label = data["co_label"]
+            # Update CO description
+            if "co_description" in data:
+                co.co_description = data["co_description"]
+            # Update course
             if "course_id" in data:
                 course = Course.objects.get(course_id=data["course_id"])
                 co.course = course
+            # Update Bloom's Taxonomy levels (individual fields)
+            if "remember" in data:
+                co.remember = 1
+            if "understand" in data:
+                co.understand = 1
+            if "apply" in data:
+                co.apply = 1
+            if "analyze" in data:
+                co.analyze = 1
+            if "evaluate" in data:
+                co.evaluate = 1
+            if "create" in data:
+                co.create = 1
             co.save()
             return JsonResponse(
                 {"message": "Course Outcome updated successfully."}, status=200
@@ -922,6 +946,7 @@ def edit_co(request, co_id):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
+
 
 
 # Delete a CO
@@ -948,8 +973,8 @@ def get_cos(request):
         co_data = [
             {
                 "co_id": co.co_id,
-                "co_number": co.co_number,
-                "description": co.description,
+                "co_label": co.co_label,
+                "co_description": co.co_description,
                 "course": co.course.title,
             }
             for co in co_list
@@ -967,13 +992,149 @@ def get_co_details(request, co_id):
             co = CO.objects.get(co_id=co_id)
             co_data = {
                 "co_id": co.co_id,
-                "co_number": co.co_number,
-                "description": co.description,
+                "co_label": co.co_label,
+                "co_description": co.co_description,
                 "course": co.course.title,
+                "bloom_taxonomy": {
+                    "remember": co.remember,
+                    "understand": co.understand,
+                    "apply": co.apply,
+                    "analyze": co.analyze,
+                    "evaluate": co.evaluate,
+                    "create": co.create,
+                }
             }
             return JsonResponse(co_data, status=200)
         except CO.DoesNotExist:
             return JsonResponse({"error": "Course Outcome not found."}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+
+class PSOView(APIView):
+    def post(self, request):
+        data = request.data
+
+        # Manual validation
+        required_fields = ["pso_label", "programme", "pso_desc"]
+        for field in required_fields:
+            if field not in data:
+                return Response(
+                    {field: "This field is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Check for unique PSO name
+        if PSO.objects.filter(pso_label=data["pso_label"]).exists():
+            return Response(
+                {"pso_label": "A PSO with this name already exists."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get or create the Programme instance
+        try:
+            programme = Programme.objects.get(programme_name=data["programme"])
+        except ObjectDoesNotExist:
+            return Response(
+                {"programme": "The specified programme does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create PSO instance
+        pso = PSO(
+            pso_label=data["pso_label"],
+            programme=programme,  # Assign the Programme instance
+            pso_desc=data["pso_desc"],
+        )
+        pso.save()
+
+        return Response(
+            {"message": "PSO created successfully."},
+            status=status.HTTP_201_CREATED,
+        )
+
+@csrf_exempt
+def edit_pso(request, pso_id):
+    if request.method == "PUT":
+        data = json.loads(request.body)
+        try:
+            pso = PSO.objects.get(pso_id=pso_id)
+            if "pso_label" in data:
+                pso.pso_label = data["pso_label"]
+            if "programme" in data:
+                programme = Programme.objects.get(programme_name=data["programme"])
+                pso.programme = programme
+            if "description" in data:
+                pso.pso_desc = data["description"]
+            pso.save()
+            return JsonResponse(
+                {"message": "PSO updated successfully."}, status=200
+            )
+        except PSO.DoesNotExist:
+            return JsonResponse({"error": "PSO not found."}, status=404)
+        except Programme.DoesNotExist:
+            return JsonResponse({"programme": "Invalid programme."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+@csrf_exempt
+def delete_pso(request, pso_id):
+    if request.method == "DELETE":
+        try:
+            pso = PSO.objects.get(pso_id=pso_id)
+            pso.delete()
+            return JsonResponse(
+                {"message": "PSO deleted successfully."}, status=200
+            )
+        except PSO.DoesNotExist:
+            return JsonResponse({"error": "PSO not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+def get_psos(request):
+    try:
+        pso_list = PSO.objects.all()
+        pso_data = [
+            {
+                "pso_id": pso.pso_id,
+                "pso_name": pso.pso_label,
+                "programme": pso.programme.programme_name,
+                "description": pso.pso_desc,
+            }
+            for pso in pso_list
+        ]
+        return JsonResponse(pso_data, safe=False, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+@csrf_exempt
+def get_pso_details(request, pso_id):
+    if request.method == "GET":
+        try:
+            pso = PSO.objects.get(pso_id=pso_id)
+            pso_data = {
+                "pso_id": pso.pso_id,
+                "pso_name": pso.pso_label,
+                "programme": pso.programme.programme_name,
+                "description": pso.pso_desc,
+            }
+            return JsonResponse(pso_data, status=200)
+        except PSO.DoesNotExist:
+            return JsonResponse({"error": "PSO not found."}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+def get_psos_by_programme(request, programme_id):
+    if request.method == "GET":
+        programme = get_object_or_404(Programme, programme_id=programme_id)
+        psos = PSO.objects.filter(programme=programme).values(
+            "pso_id", "pso_label", "pso_desc"
+        )
+        return JsonResponse(list(psos), safe=False, status=200)
+    
     return JsonResponse({"error": "Invalid request method."}, status=405)
