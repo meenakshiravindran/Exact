@@ -783,13 +783,12 @@ def edit_po(request, po_id):
         data = json.loads(request.body)
         try:
             po = PO.objects.get(id=po_id)
-            if "programme" in data:
-                programme = Programme.objects.get(programme_name=data["programme"])
-                po.programme = programme
+            if "po_label" in data:
+                po.po_label=data["po_label"]
             if "pos_description" in data:
                 po.pos_description = data["pos_description"]
             if "level" in data:
-                level = Level.objects.get(id=data["level"])
+                level = Level.objects.get(level_id=data["level"])
                 po.level = level
             po.save()
             return JsonResponse(
@@ -820,22 +819,16 @@ def delete_po(request, po_id):
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
-def get_pos(request,level_id):
-    try:
-        level = get_object_or_404(Level, level_id=level_id)
-        pos_list = PO.objects.all()
-        pos_data = [
-            {
-                "id": po.id,
-                "pos_description": po.pos_description,
-                "level": po.level.level_id,
-            }
-            for po in pos_list
-        ]
-        return JsonResponse(pos_data, safe=False, status=200)
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400)
 
+def get_pos_by_level(request, level_id):
+    if request.method == "GET":
+        level = get_object_or_404(Level, level_id=level_id)
+        pos_list = PO.objects.filter(level=level).values(
+            "id", "po_label", "pos_description", "level"
+        )
+        return JsonResponse(list(pos_list), safe=False, status=200)
+
+    return JsonResponse({"error": "Invalid request method."}, status=405)
 @csrf_exempt
 def get_po_details(request, po_id):
     if request.method == "GET":
@@ -843,6 +836,7 @@ def get_po_details(request, po_id):
             po = PO.objects.get(id=po_id)
             po_data = {
                 "id": po.id,
+                "po_label":po.po_label,
                 "pos_description": po.pos_description,
                 "level": po.level.level_id,
             }
