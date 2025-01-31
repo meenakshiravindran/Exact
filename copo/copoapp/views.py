@@ -408,6 +408,15 @@ def get_course_details(request, course_id):
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
+def get_course_by_programme(request, programme_id):
+    if request.method == "GET":
+        programme = get_object_or_404(Programme, programme_id=programme_id)
+        course = Course.objects.filter(programme=programme).values(
+           "course_id","title"
+        )
+        return JsonResponse(list(course), safe=False, status=200)
+    
+    return JsonResponse({"error": "Invalid request method."}, status=405)
 
 
 # Add a Batch
@@ -874,16 +883,17 @@ class COView(APIView):
         bloom_taxonomy_fields = ["remember", "understand", "apply", "analyze", "evaluate", "create"]
         taxonomy_values = {field: 0 for field in bloom_taxonomy_fields}
 
-        # Ensure the selected taxonomy field is valid
-        selected_taxonomy = data["bloom_taxonomy"].lower()
-        if selected_taxonomy not in taxonomy_values:
-            return Response(
-                {"bloom_taxonomy": "Invalid taxonomy selection."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Set the selected taxonomy field to 1
-        taxonomy_values[selected_taxonomy] = 1
+        # Check if bloom_taxonomy is provided and valid
+        if "bloom_taxonomy" in data and isinstance(data["bloom_taxonomy"], list):
+            for taxonomy in data["bloom_taxonomy"]:
+                taxonomy = taxonomy.lower()
+                if taxonomy in taxonomy_values:
+                    taxonomy_values[taxonomy] = 1
+                else:
+                    return Response(
+                        {"bloom_taxonomy": f"Invalid taxonomy selection: {taxonomy}"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
         # Create Course Outcome instance
         co = CO(
@@ -898,7 +908,6 @@ class COView(APIView):
             {"message": "Course Outcome created successfully."},
             status=status.HTTP_201_CREATED,
         )
-    
 
 @csrf_exempt
 def edit_co(request, co_id):
@@ -906,29 +915,28 @@ def edit_co(request, co_id):
         data = json.loads(request.body)
         try:
             co = CO.objects.get(co_id=co_id)  # Fetching CO by co_id
+            
             # Update CO label
             if "co_label" in data:
                 co.co_label = data["co_label"]
+            
             # Update CO description
             if "co_description" in data:
                 co.co_description = data["co_description"]
+            
             # Update course
-            if "course_id" in data:
-                course = Course.objects.get(course_id=data["course_id"])
+            if "course" in data:
+                course = Course.objects.get(title=data["course"])
                 co.course = course
-            # Update Bloom's Taxonomy levels (individual fields)
-            if "remember" in data:
-                co.remember = 1
-            if "understand" in data:
-                co.understand = 1
-            if "apply" in data:
-                co.apply = 1
-            if "analyze" in data:
-                co.analyze = 1
-            if "evaluate" in data:
-                co.evaluate = 1
-            if "create" in data:
-                co.create = 1
+            
+            # Update Bloom's Taxonomy using the dictionary format
+            if "bloom_taxonomy" in data and isinstance(data["bloom_taxonomy"], dict):
+                bloom_taxonomy_fields = ["remember", "understand", "apply", "analyze", "evaluate", "create"]
+                
+                for field in bloom_taxonomy_fields:
+                    if field in data["bloom_taxonomy"]:
+                        setattr(co, field, int(data["bloom_taxonomy"][field]))  # Ensure it's stored as an integer
+            
             co.save()
             return JsonResponse(
                 {"message": "Course Outcome updated successfully."}, status=200
@@ -936,11 +944,11 @@ def edit_co(request, co_id):
         except CO.DoesNotExist:
             return JsonResponse({"error": "Course Outcome not found."}, status=404)
         except Course.DoesNotExist:
-            return JsonResponse({"course_id": "Invalid course ID."}, status=400)
+            return JsonResponse({"error": "Invalid course title."}, status=400)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
+    
     return JsonResponse({"error": "Invalid request method."}, status=405)
-
 
 
 # Delete a CO
@@ -970,6 +978,7 @@ def get_cos(request):
                 "co_label": co.co_label,
                 "co_description": co.co_description,
                 "course": co.course.title,
+                "programme":co.course.programme.programme_name
             }
             for co in co_list
         ]
@@ -1005,6 +1014,15 @@ def get_co_details(request, co_id):
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
+def get_co_by_course(request, course_id):
+    if request.method == "GET":
+        course = get_object_or_404(Course, course_id=course_id)
+        co = CO.objects.filter(course=course).values(
+            "co_id","co_label","co_description"
+        )
+        return JsonResponse(list(co), safe=False, status=200)
+    
+    return JsonResponse({"error": "Invalid request method."}, status=405)
 
 
 class PSOView(APIView):
