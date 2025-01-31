@@ -50,4 +50,5 @@ urlpatterns = [
      path('get-psos/', views.get_psos, name='get-psos'),
      path('pso/<int:pso_id>/', views.get_pso_details, name='get-pso-details'),
      path('psos/by-programme/<int:programme_id>/', views.get_psos_by_programme, name='get-pso-by-programme'),
+     path('add-question/', views.AddQuestionView.as_view(), name='add-question'),
 ]
