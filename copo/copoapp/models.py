@@ -96,6 +96,7 @@ class CO(models.Model):
     co_id = models.AutoField(primary_key=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE,null=True, blank=True)
     co_label = models.CharField(max_length=255)
+    
     co_description = models.TextField()
     remember = models.IntegerField()
     understand = models.IntegerField()
