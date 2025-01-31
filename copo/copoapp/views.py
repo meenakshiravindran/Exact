@@ -19,6 +19,7 @@ from .models import (
     PO,
     CO,
     PSO,
+    QuestionBank,
 )
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
@@ -1150,3 +1151,49 @@ def get_psos_by_programme(request, programme_id):
         return JsonResponse(list(psos), safe=False, status=200)
     
     return JsonResponse({"error": "Invalid request method."}, status=405)
+
+
+
+class AddQuestionView(APIView):
+    def post(self, request):
+        data = request.data
+
+        # Manual validation of required fields
+        required_fields = ["question_text", "course", "co"]
+        for field in required_fields:
+            if field not in data:
+                return Response(
+                    {field: "This field is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Get Course instance
+        try:
+            course = Course.objects.get(course_id=data["course"])
+        except ObjectDoesNotExist:
+            return Response(
+                {"course": "The specified course does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get CO instance
+        try:
+            co = CO.objects.get(co_id=data["co"])
+        except ObjectDoesNotExist:
+            return Response(
+                {"co": "The specified CO does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create QuestionBank instance
+        question = QuestionBank(
+            question_text=data["question_text"],
+            course=course,
+            co=co,
+        )
+        question.save()
+
+        return Response(
+            {"message": "Question added successfully."},
+            status=status.HTTP_201_CREATED,
+        )
