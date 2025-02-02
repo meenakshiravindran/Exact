@@ -23,6 +23,8 @@ from .models import (
 )
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
+from django.utils.html import escape
+
 class UserRegistrationView(APIView):
     def post(self, request):
         data = request.data
@@ -839,6 +841,7 @@ def get_pos_by_level(request, level_id):
         return JsonResponse(list(pos_list), safe=False, status=200)
 
     return JsonResponse({"error": "Invalid request method."}, status=405)
+
 @csrf_exempt
 def get_po_details(request, po_id):
     if request.method == "GET":
@@ -1185,9 +1188,15 @@ class AddQuestionView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Convert plain text to LaTeX if necessary
+        question_text = data["question_text"]
+        if "$" not in question_text:  # Check if LaTeX is missing
+            question_text = escape(question_text)  # Escape HTML to prevent injection
+            question_text = f"${question_text}$"  # Wrap it in LaTeX delimiters
+
         # Create QuestionBank instance
         question = QuestionBank(
-            question_text=data["question_text"],
+            question_text=question_text,
             course=course,
             co=co,
         )
