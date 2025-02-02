@@ -21,6 +21,8 @@ from .models import (
     PSO,
     QuestionBank,
 )
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
 class UserRegistrationView(APIView):
@@ -1197,3 +1199,15 @@ class AddQuestionView(APIView):
             {"message": "Question added successfully."},
             status=status.HTTP_201_CREATED,
         )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])  # Only allow authenticated users
+def get_faculty_batches(request):
+    try:
+        faculty = get_object_or_404(Faculty, email=request.user.email)
+        batches = Batch.objects.filter(faculty_id=faculty).values(
+            "batch_id", "course__title", "year", "part", "active"
+        )
+        return Response(list(batches), status=200)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
