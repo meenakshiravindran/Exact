@@ -20,6 +20,7 @@ from .models import (
     CO,
     PSO,
     QuestionBank,
+    InternalExam
 )
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -1211,3 +1212,40 @@ def get_faculty_batches(request):
         return Response(list(batches), status=200)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+    
+
+class InternalExamView(APIView):
+    def post(self, request):
+        data = request.data
+
+        # Manual validation
+        required_fields = ["batch", "exam_name", "duration", "max_marks"]
+        for field in required_fields:
+            if field not in data:
+                return Response(
+                    {field: "This field is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Validate batch existence
+        try:
+            batch = Batch.objects.get(batch_id=data["batch"])
+        except ObjectDoesNotExist:
+            return Response(
+                {"batch": "The specified batch does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create InternalExam instance
+        internal_exam = InternalExam(
+            batch=batch,
+            exam_name=data["exam_name"],
+            duration=data["duration"],
+            max_marks=data["max_marks"],
+        )
+        internal_exam.save()
+
+        return Response(
+            {"message": "Internal exam created successfully."},
+            status=status.HTTP_201_CREATED,
+        )

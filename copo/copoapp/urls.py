@@ -52,4 +52,5 @@ urlpatterns = [
      path('psos/by-programme/<int:programme_id>/', views.get_psos_by_programme, name='get-pso-by-programme'),
      path('add-question/', views.AddQuestionView.as_view(), name='add-question'),
      path('faculty-batches/', views.get_faculty_batches, name='faculty_batches'),
+     path('add-internal-exam/', views.InternalExamView.as_view(), name='add_internal_exam'),
 ]

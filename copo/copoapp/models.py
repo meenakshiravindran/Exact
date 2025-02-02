@@ -2,15 +2,17 @@ from django.db import models
 
 from django.contrib.auth.models import AbstractUser
 
+
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
-        ('admin', 'Admin'),
-        ('teacher', 'Teacher'),
+        ("admin", "Admin"),
+        ("teacher", "Teacher"),
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='teacher')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="teacher")
 
     def __str__(self):
         return self.username
+
 
 class Department(models.Model):
     dept_id = models.AutoField(primary_key=True)
@@ -43,7 +45,7 @@ class Programme(models.Model):
 class Course(models.Model):
     course_id = models.AutoField(primary_key=True)
     course_code = models.CharField(max_length=50, unique=True)
-    title=models.CharField(max_length=100)
+    title = models.CharField(max_length=100)
     dept = models.ForeignKey(Department, on_delete=models.CASCADE)
     semester = models.IntegerField()
     credits = models.IntegerField()
@@ -68,8 +70,8 @@ class Faculty(models.Model):
 
 class Batch(models.Model):
     batch_id = models.AutoField(primary_key=True)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)  
-    faculty_id = models.ForeignKey(Faculty,on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    faculty_id = models.ForeignKey(Faculty, on_delete=models.CASCADE)
     year = models.IntegerField()
     part = models.CharField(max_length=50)
     active = models.BooleanField()
@@ -91,12 +93,11 @@ class Student(models.Model):
         return self.name
 
 
-
 class CO(models.Model):
     co_id = models.AutoField(primary_key=True)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE,null=True, blank=True)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, null=True, blank=True)
     co_label = models.CharField(max_length=255)
-    
+
     co_description = models.TextField()
     remember = models.IntegerField()
     understand = models.IntegerField()
@@ -111,7 +112,7 @@ class CO(models.Model):
 
 class PO(models.Model):
     id = models.AutoField(primary_key=True)
-    po_label=models.CharField(max_length=255,null=True,blank=True)
+    po_label = models.CharField(max_length=255, null=True, blank=True)
     pos_description = models.TextField()
     level = models.ForeignKey(Level, on_delete=models.CASCADE)
 
@@ -168,16 +169,21 @@ class Assignment(models.Model):
 class InternalExam(models.Model):
     int_exam_id = models.AutoField(primary_key=True)
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
+    exam_name = models.CharField(
+        max_length=20, null=True, blank=True
+    )  # Example: IA1, IA2
     duration = models.IntegerField()
     max_marks = models.IntegerField()
 
     def __str__(self):
-        return f"Internal Exam {self.int_exam_id}"
+        return f"{self.exam_name} - {self.module} (Batch {self.batch.id})"
 
 
 class ExternalMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    external_exam = models.ForeignKey(ExternalExam, on_delete=models.CASCADE, null=True, blank=True)
+    external_exam = models.ForeignKey(
+        ExternalExam, on_delete=models.CASCADE, null=True, blank=True
+    )
     marks = models.IntegerField()
 
 
@@ -189,19 +195,25 @@ class VivaMark(models.Model):
 
 class QuizMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, null=True, blank=True) #Once all existing rows have valid quiz values, make the field non-nullable again by removing null=True, blank=True and running migrations.
+    quiz = models.ForeignKey(
+        Quiz, on_delete=models.CASCADE, null=True, blank=True
+    )  # Once all existing rows have valid quiz values, make the field non-nullable again by removing null=True, blank=True and running migrations.
     marks = models.IntegerField()
 
 
 class AssignmentMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, null=True, blank=True)
+    assignment = models.ForeignKey(
+        Assignment, on_delete=models.CASCADE, null=True, blank=True
+    )
     marks = models.IntegerField()
 
 
 class InternalMark(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    internal_exam = models.ForeignKey(InternalExam, on_delete=models.CASCADE, null=True, blank=True)
+    internal_exam = models.ForeignKey(
+        InternalExam, on_delete=models.CASCADE, null=True, blank=True
+    )
     marks = models.IntegerField()
 
 
