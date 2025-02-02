@@ -1249,3 +1249,15 @@ class InternalExamView(APIView):
             {"message": "Internal exam created successfully."},
             status=status.HTTP_201_CREATED,
         )
+
+class FacultyInternalExamsView(APIView):
+    def get(self, request):
+        faculty_email = request.user.email
+
+        batches = Batch.objects.filter(faculty_id__email=faculty_email)
+
+        exams = InternalExam.objects.filter(batch__in=batches).values(
+            "int_exam_id", "exam_name", "duration", "max_marks"
+        )
+
+        return Response(exams, status=status.HTTP_200_OK)
