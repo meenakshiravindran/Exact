@@ -170,6 +170,7 @@ class InternalExam(models.Model):
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE)
     duration = models.IntegerField()
     max_marks = models.IntegerField()
+    date=models.DateField()
 
     def __str__(self):
         return f"Internal Exam {self.int_exam_id}"
@@ -211,6 +212,8 @@ class ExamSection(models.Model):
     section_name = models.CharField(max_length=255)
     no_of_questions = models.IntegerField()
     no_of_questions_to_be_answered = models.IntegerField()
+    ceiling_mark=models.IntegerField()
+    description=models.CharField(max_length=500)
 
 
 class QuestionBank(models.Model):
