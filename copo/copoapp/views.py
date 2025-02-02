@@ -21,10 +21,10 @@ from .models import (
     PSO,
     QuestionBank,
 )
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
-from django.utils.html import escape
-
 class UserRegistrationView(APIView):
     def post(self, request):
         data = request.data
@@ -841,7 +841,6 @@ def get_pos_by_level(request, level_id):
         return JsonResponse(list(pos_list), safe=False, status=200)
 
     return JsonResponse({"error": "Invalid request method."}, status=405)
-
 @csrf_exempt
 def get_po_details(request, po_id):
     if request.method == "GET":
@@ -1188,15 +1187,9 @@ class AddQuestionView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Convert plain text to LaTeX if necessary
-        question_text = data["question_text"]
-        if "$" not in question_text:  # Check if LaTeX is missing
-            question_text = escape(question_text)  # Escape HTML to prevent injection
-            question_text = f"${question_text}$"  # Wrap it in LaTeX delimiters
-
         # Create QuestionBank instance
         question = QuestionBank(
-            question_text=question_text,
+            question_text=data["question_text"],
             course=course,
             co=co,
         )
@@ -1206,3 +1199,15 @@ class AddQuestionView(APIView):
             {"message": "Question added successfully."},
             status=status.HTTP_201_CREATED,
         )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])  # Only allow authenticated users
+def get_faculty_batches(request):
+    try:
+        faculty = get_object_or_404(Faculty, email=request.user.email)
+        batches = Batch.objects.filter(faculty_id=faculty).values(
+            "batch_id", "course__title", "year", "part", "active"
+        )
+        return Response(list(batches), status=200)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
