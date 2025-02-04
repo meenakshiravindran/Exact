@@ -20,8 +20,10 @@ from .models import (
     CO,
     PSO,
     QuestionBank,
-    InternalExam
+    InternalExam,
+    ExamSection
 )
+from datetime import datetime
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
@@ -1250,10 +1252,10 @@ class InternalExamView(APIView):
     def post(self, request):
         data = request.data
 
-        # Manual validation
-        required_fields = ["batch", "exam_name", "duration", "max_marks"]
+        # Required fields validation
+        required_fields = ["batch", "exam_name", "duration", "max_marks", "exam_date"]
         for field in required_fields:
-            if field not in data:
+            if field not in data or not data[field]:
                 return Response(
                     {field: "This field is required."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -1268,17 +1270,27 @@ class InternalExamView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Create InternalExam instance
+        # Validate and parse exam_date
+        try:
+            exam_date = datetime.strptime(data["exam_date"], "%Y-%m-%d").date()
+        except ValueError:
+            return Response(
+                {"exam_date": "Invalid date format. Expected format: YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create InternalExam instance with the date field
         internal_exam = InternalExam(
             batch=batch,
             exam_name=data["exam_name"],
             duration=data["duration"],
             max_marks=data["max_marks"],
+            date=exam_date,  # Assigning the parsed date
         )
         internal_exam.save()
 
         return Response(
-            {"message": "Internal exam created successfully."},
+            {"message": "Internal exam created successfully.","data":internal_exam.int_exam_id},
             status=status.HTTP_201_CREATED,
         )
 
@@ -1293,3 +1305,55 @@ class FacultyInternalExamsView(APIView):
         )
 
         return Response(exams, status=status.HTTP_200_OK)
+
+
+
+class ExamSectionView(APIView):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)  
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        # Validate required fields
+        required_fields = ["internal_exam", "section_name", "no_of_questions", "no_of_questions_to_be_answered", "ceiling_mark"]
+        for field in required_fields:
+            if field not in data or not data[field]:
+                return JsonResponse({field: "This field is required."}, status=400)
+
+        try:
+            internal_exam = InternalExam.objects.get(int_exam_id=data["internal_exam"])
+        except InternalExam.DoesNotExist:
+            return JsonResponse({"internal_exam": "Invalid Internal Exam ID"}, status=400)
+
+        ExamSection.objects.create(
+            internal_exam=internal_exam,
+            section_name=data["section_name"],
+            no_of_questions=int(data["no_of_questions"]),
+            no_of_questions_to_be_answered=int(data["no_of_questions_to_be_answered"]),
+            ceiling_mark=int(data["ceiling_mark"]),
+            description=data.get("description", "Default description") 
+        )
+
+        return JsonResponse({"message": "Exam section created successfully!"}, status=201)
+
+def get_exam_details(request, int_exam_id):
+    # Get the internal exam object by id
+    exam = get_object_or_404(InternalExam, int_exam_id=int_exam_id)
+
+    # Fetch batch and course info
+    batch = exam.batch
+    course_name = batch.course.title if batch.course else "Unknown Course"
+    faculty_name = batch.faculty_id.name if batch.faculty_id else "Unknown Faculty"
+    
+    # Create a response data structure
+    exam_details = {
+        "exam_name": exam.exam_name,
+        "course_name": course_name,
+        "faculty_name": faculty_name,
+        "duration": exam.duration,
+        "max_marks": exam.max_marks,
+        "date": exam.date,
+    }
+
+    return JsonResponse(exam_details)
