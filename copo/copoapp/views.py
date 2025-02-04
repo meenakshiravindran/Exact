@@ -379,7 +379,7 @@ def get_courses(request):
     try:
         course_list = Course.objects.all()
         course_data = [
-            {"course_id": course.course_id, "title": course.title,"dept":course.dept.dept_name}
+            {"course_id": course.course_id, "title": course.title,"dept":course.dept.dept_name,"programme":course.programme.programme_name}
             for course in course_list
         ]
         return JsonResponse(course_data, safe=False, status=200)
@@ -730,16 +730,21 @@ def get_student_details(request, student_id):
     
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
-def get_students_by_programme(request, programme_id):
+def get_students_by_programme(request, programme_id=None):
     if request.method == "GET":
-        programme = get_object_or_404(Programme, programme_id=programme_id)
-        students = Student.objects.filter(programme=programme).values(
+        if programme_id:
+            programme = get_object_or_404(Programme, programme_id=programme_id)
+            students = Student.objects.filter(programme=programme)
+        else:
+            students = Student.objects.all()
+
+        student_data = students.values(
             "student_id", "name", "register_no", "year_of_admission", "phone_number", "email"
         )
-        return JsonResponse(list(students), safe=False, status=200)
+
+        return JsonResponse(list(student_data), safe=False, status=200)
     
     return JsonResponse({"error": "Invalid request method."}, status=405)
-
 @csrf_exempt
 def delete_student(request,student_id):
     if request.method=="DELETE":
@@ -833,15 +838,27 @@ def delete_po(request, po_id):
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
 
-def get_pos_by_level(request, level_id):
-    if request.method == "GET":
-        level = get_object_or_404(Level, level_id=level_id)
-        pos_list = PO.objects.filter(level=level).values(
-            "id", "po_label", "pos_description", "level"
-        )
-        return JsonResponse(list(pos_list), safe=False, status=200)
+def get_pos_by_level(request, level_id=None):
+    try:
+        if level_id:
+            po_list = PO.objects.filter(level_id=level_id)
+        else:
+            po_list = PO.objects.all()
 
-    return JsonResponse({"error": "Invalid request method."}, status=405)
+        po_data = [
+            {
+                "id": po.id,
+                "po_label": po.po_label,
+                "pos_description": po.pos_description,
+                "level_id": po.level.level_id,
+                "level_name": po.level.name,
+            }
+            for po in po_list
+        ]
+        return JsonResponse(po_data, safe=False, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
 @csrf_exempt
 def get_po_details(request, po_id):
     if request.method == "GET":
@@ -1117,9 +1134,9 @@ def get_psos(request):
         pso_data = [
             {
                 "pso_id": pso.pso_id,
-                "pso_name": pso.pso_label,
+                "pso_label": pso.pso_label,
                 "programme": pso.programme.programme_name,
-                "description": pso.pso_desc,
+                "pso_desc": pso.pso_desc,
             }
             for pso in pso_list
         ]
