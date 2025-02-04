@@ -1,7 +1,7 @@
 from django.db import models
 
 from django.contrib.auth.models import AbstractUser
-
+from django.utils import timezone
 
 class CustomUser(AbstractUser):
     ROLE_CHOICES = (
@@ -174,7 +174,7 @@ class InternalExam(models.Model):
     )  # Example: IA1, IA2
     duration = models.IntegerField(null=True,blank=True)
     max_marks = models.IntegerField(null=True,blank=True)
-    date=models.DateField(null=True,blank=True)
+    date=models.DateField(default=timezone.now,null=True,blank=True)
 
     def __str__(self):
         return f"{self.exam_name} - {self.module} (Batch {self.batch.id})"
@@ -224,8 +224,8 @@ class ExamSection(models.Model):
     section_name = models.CharField(max_length=255)
     no_of_questions = models.IntegerField()
     no_of_questions_to_be_answered = models.IntegerField()
-    ceiling_mark=models.IntegerField(null=True,blank=True)
-    description=models.CharField(max_length=500,null=True,blank=True)
+    ceiling_mark=models.IntegerField(default=0,null=True,blank=True)
+    description=models.CharField(default="Default description",max_length=500,null=True,blank=True)
 
 
 class QuestionBank(models.Model):
@@ -233,6 +233,7 @@ class QuestionBank(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     co = models.ForeignKey(CO, on_delete=models.CASCADE)
     question_text = models.TextField()
+    marks = models.IntegerField(default=0)
 
     def __str__(self):
         return f"Question {self.question_id}"

@@ -1179,7 +1179,7 @@ class AddQuestionView(APIView):
         data = request.data
 
         # Manual validation of required fields
-        required_fields = ["question_text", "course", "co"]
+        required_fields = ["question_text", "course", "co","marks"]
         for field in required_fields:
             if field not in data:
                 return Response(
@@ -1204,12 +1204,27 @@ class AddQuestionView(APIView):
                 {"co": "The specified CO does not exist."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        
+        #Validate marks
+        try:
+            marks = int(data["marks"])
+            if marks <= 0:
+                return Response(
+                    {"marks": "Marks must be a positive integer."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        except ValueError:
+            return Response(
+                {"marks": "Marks must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Create QuestionBank instance
         question = QuestionBank(
             question_text=data["question_text"],
             course=course,
             co=co,
+            marks=marks,
         )
         question.save()
 
