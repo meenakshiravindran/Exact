@@ -1293,3 +1293,44 @@ class FacultyInternalExamsView(APIView):
         )
 
         return Response(exams, status=status.HTTP_200_OK)
+
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import get_object_or_404
+from .models import QuestionBank, Course, CO
+
+@csrf_exempt
+def edit_question(request, question_id):
+    if request.method == "PUT":
+        data = json.loads(request.body)
+        try:
+            question = get_object_or_404(QuestionBank, question_id=question_id)
+
+            if "course" in data:
+                course = get_object_or_404(Course, course_id=data["course"])
+                question.course = course
+
+            if "co" in data:
+                co = get_object_or_404(CO, co_id=data["co"])
+                question.co = co
+
+            if "question_text" in data:
+                question.question_text = data["question_text"]
+
+            if "marks" in data:
+                question.marks = int(data["marks"])
+
+            question.save()
+            return JsonResponse({"message": "Question updated successfully."}, status=200)
+        
+        except Course.DoesNotExist:
+            return JsonResponse({"error": "Invalid course."}, status=400)
+        
+        except CO.DoesNotExist:
+            return JsonResponse({"error": "Invalid CO."}, status=400)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"error": "Invalid request method."}, status=405)
