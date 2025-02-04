@@ -56,5 +56,6 @@ urlpatterns = [
      path('faculty-batches/', views.get_faculty_batches, name='faculty_batches'),
      path('add-internal-exam/', views.InternalExamView.as_view(), name='add_internal_exam'),
      path('get-internal-exams/', views.FacultyInternalExamsView.as_view(), name='get-internal-exam'),
-     
+     path("add-section/", views.ExamSectionView.as_view(), name="add-exam-section"),
+     path('exam-details/<int:int_exam_id>/', views.get_exam_details, name='get_exam_details'),
 ]
