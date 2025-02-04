@@ -172,9 +172,9 @@ class InternalExam(models.Model):
     exam_name = models.CharField(
         max_length=20, null=True, blank=True
     )  # Example: IA1, IA2
-    duration = models.IntegerField()
-    max_marks = models.IntegerField()
-    date=models.DateField()
+    duration = models.IntegerField(null=True,blank=True)
+    max_marks = models.IntegerField(null=True,blank=True)
+    date=models.DateField(null=True,blank=True)
 
     def __str__(self):
         return f"{self.exam_name} - {self.module} (Batch {self.batch.id})"
@@ -224,8 +224,8 @@ class ExamSection(models.Model):
     section_name = models.CharField(max_length=255)
     no_of_questions = models.IntegerField()
     no_of_questions_to_be_answered = models.IntegerField()
-    ceiling_mark=models.IntegerField()
-    description=models.CharField(max_length=500)
+    ceiling_mark=models.IntegerField(null=True,blank=True)
+    description=models.CharField(max_length=500,null=True,blank=True)
 
 
 class QuestionBank(models.Model):
