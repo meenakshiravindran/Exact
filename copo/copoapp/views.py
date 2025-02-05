@@ -1306,6 +1306,87 @@ class FacultyInternalExamsView(APIView):
 
         return Response(exams, status=status.HTTP_200_OK)
 
+@csrf_exempt
+def edit_question(request, question_id):
+    if request.method == "PUT":
+        data = json.loads(request.body)
+        try:
+            question = get_object_or_404(QuestionBank, question_id=question_id)
+
+            if "course" in data:
+                course = get_object_or_404(Course, course_id=data["course"])
+                question.course = course
+
+            if "co" in data:
+                co = get_object_or_404(CO, co_id=data["co"])
+                question.co = co
+
+            if "question_text" in data:
+                question.question_text = data["question_text"]
+
+            if "marks" in data:
+                question.marks = int(data["marks"])
+
+            question.save()
+            return JsonResponse({"message": "Question updated successfully."}, status=200)
+        
+        except Course.DoesNotExist:
+            return JsonResponse({"error": "Invalid course."}, status=400)
+        
+        except CO.DoesNotExist:
+            return JsonResponse({"error": "Invalid CO."}, status=400)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+@csrf_exempt
+def get_question_details(request, question_id):
+    """Fetch details of a specific question"""
+    if request.method == "GET":
+        try:
+            question = get_object_or_404(QuestionBank, question_id=question_id)
+            question_data = {
+                "question_id": question.question_id,
+                "question_text": question.question_text,
+                "course": question.course.course_id,
+                "co": question.co.co_id,
+                "marks": question.marks,
+            }
+            return JsonResponse(question_data, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+@csrf_exempt
+def delete_question(request, question_id):
+    if request.method == "DELETE":
+        try:
+            question = QuestionBank.objects.get(pk=question_id)
+            question.delete()
+            return JsonResponse({"message": "Question deleted successfully"})
+        except QuestionBank.DoesNotExist:
+            return JsonResponse({"error": "Question not found"}, status=404)
+
+# Get All Questions
+def get_questions(request):
+    try:
+        question_list = QuestionBank.objects.all()
+        question_data = [
+            {
+                "question_id": question.question_id,
+                "question_text": question.question_text,
+                "marks": question.marks,
+                "course": question.course.title,
+                "programme": question.course.programme.programme_name,
+                "co_label": question.co.co_label,
+            }
+            for question in question_list
+        ]
+        return JsonResponse(question_data, safe=False, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
 
 
 class ExamSectionView(APIView):
