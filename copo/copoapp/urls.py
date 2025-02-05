@@ -61,4 +61,7 @@ urlpatterns = [
      path("get-questions/", views.get_questions, name="get-questions"),
      path("question/edit/<int:question_id>/", views.edit_question, name="edit-question"),
      path("question/delete/<int:question_id>/", views.delete_question, name="delete-question"),
+
+     path("add-section/", views.ExamSectionView.as_view(), name="add-exam-section"),
+     path('exam-details/<int:int_exam_id>/', views.get_exam_details, name='get_exam_details'),
 ]
