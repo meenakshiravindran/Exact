@@ -1294,12 +1294,6 @@ class FacultyInternalExamsView(APIView):
 
         return Response(exams, status=status.HTTP_200_OK)
 
-import json
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import get_object_or_404
-from .models import QuestionBank, Course, CO
-
 @csrf_exempt
 def edit_question(request, question_id):
     if request.method == "PUT":
@@ -1334,3 +1328,50 @@ def edit_question(request, question_id):
             return JsonResponse({"error": str(e)}, status=400)
 
     return JsonResponse({"error": "Invalid request method."}, status=405)
+
+@csrf_exempt
+def get_question_details(request, question_id):
+    """Fetch details of a specific question"""
+    if request.method == "GET":
+        try:
+            question = get_object_or_404(QuestionBank, question_id=question_id)
+            question_data = {
+                "question_id": question.question_id,
+                "question_text": question.question_text,
+                "course": question.course.course_id,
+                "co": question.co.co_id,
+                "marks": question.marks,
+            }
+            return JsonResponse(question_data, status=200)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({"error": "Invalid request method."}, status=405)
+
+@csrf_exempt
+def delete_question(request, question_id):
+    if request.method == "DELETE":
+        try:
+            question = QuestionBank.objects.get(pk=question_id)
+            question.delete()
+            return JsonResponse({"message": "Question deleted successfully"})
+        except QuestionBank.DoesNotExist:
+            return JsonResponse({"error": "Question not found"}, status=404)
+
+# Get All Questions
+def get_questions(request):
+    try:
+        question_list = QuestionBank.objects.all()
+        question_data = [
+            {
+                "question_id": question.question_id,
+                "question_text": question.question_text,
+                "marks": question.marks,
+                "course": question.course.title,
+                "programme": question.course.programme.programme_name,
+                "co_label": question.co.co_label,
+            }
+            for question in question_list
+        ]
+        return JsonResponse(question_data, safe=False, status=200)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
