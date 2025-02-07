@@ -61,7 +61,12 @@ urlpatterns = [
      path("get-questions/", views.get_questions, name="get-questions"),
      path("question/edit/<int:question_id>/", views.edit_question, name="edit-question"),
      path("question/delete/<int:question_id>/", views.delete_question, name="delete-question"),
-
-     path("add-section/", views.ExamSectionView.as_view(), name="add-exam-section"),
+     path("exam-sections/<int:int_exam_id>/", views.get_exam_sections, name="get_exam_sections"),
+     path("add-exam-sections/<int:int_exam_id>/", views.add_exam_section, name="add_exam_section"),
+     path("exam-sections/delete/<int:section_id>/", views.delete_exam_section, name="delete_exam_section"),
      path('exam-details/<int:int_exam_id>/', views.get_exam_details, name='get_exam_details'),
+     
+     path("add-exam-questions/", views.AddExamQuestionsView.as_view(), name="add-exam-questions"),
+     path('questions/by-marks/', views.GetQuestionsView.as_view(), name='get-questions-by-marks'),
+     path('exam/<int:exam_id>/sections/<int:section_id>/questions/', views.get_questions_for_section, name='get_questions_for_section'),
 ]

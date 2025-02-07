@@ -21,7 +21,8 @@ from .models import (
     PSO,
     QuestionBank,
     InternalExam,
-    ExamSection
+    ExamSection,
+    ExamQuestion
 )
 from datetime import datetime
 from rest_framework.decorators import api_view, permission_classes
@@ -1389,34 +1390,55 @@ def get_questions(request):
         return JsonResponse({"error": str(e)}, status=400)
 
 
-class ExamSectionView(APIView):
-    def post(self, request):
-        try:
-            data = json.loads(request.body)  
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-
-        # Validate required fields
-        required_fields = ["internal_exam", "section_name", "no_of_questions", "no_of_questions_to_be_answered", "ceiling_mark"]
-        for field in required_fields:
-            if field not in data or not data[field]:
-                return JsonResponse({field: "This field is required."}, status=400)
-
-        try:
-            internal_exam = InternalExam.objects.get(int_exam_id=data["internal_exam"])
-        except InternalExam.DoesNotExist:
-            return JsonResponse({"internal_exam": "Invalid Internal Exam ID"}, status=400)
-
-        ExamSection.objects.create(
+@csrf_exempt
+def add_exam_section(request, int_exam_id):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        internal_exam = get_object_or_404(InternalExam, pk=int_exam_id)
+        
+        new_section = ExamSection.objects.create(
             internal_exam=internal_exam,
-            section_name=data["section_name"],
-            no_of_questions=int(data["no_of_questions"]),
-            no_of_questions_to_be_answered=int(data["no_of_questions_to_be_answered"]),
-            ceiling_mark=int(data["ceiling_mark"]),
-            description=data.get("description", "Default description") 
+            section_name=data.get("section_name"),
+            no_of_questions=data.get("no_of_questions"),
+            no_of_questions_to_be_answered=data.get("no_of_questions_to_be_answered"),
+            ceiling_mark=data.get("ceiling_mark", 0),
+            description=data.get("description", "Default description"),
         )
+        
+        return JsonResponse({
+            "id": new_section.section_id,
+            "name": new_section.section_name,
+            "numQuestions": new_section.no_of_questions,
+            "numToAnswer": new_section.no_of_questions_to_be_answered,
+            "ceilingMark": new_section.ceiling_mark,
+            "description": new_section.description
+        })
+    return JsonResponse({"error": "Invalid request"}, status=400)
 
-        return JsonResponse({"message": "Exam section created successfully!"}, status=201)
+        
+def get_exam_sections(request, int_exam_id):
+    sections = ExamSection.objects.filter(internal_exam_id=int_exam_id)
+    sections_data = [
+        {
+            "id": section.section_id,
+            "name": section.section_name,
+            "numQuestions": section.no_of_questions,
+            "numToAnswer": section.no_of_questions_to_be_answered,
+            "ceilingMark": section.ceiling_mark,
+            "description": section.description
+        }
+        for section in sections
+    ]
+    return JsonResponse({"sections": sections_data})
+
+@csrf_exempt
+def delete_exam_section(request, section_id):
+    if request.method == "DELETE":
+        section = get_object_or_404(ExamSection, pk=section_id)
+        section.delete()
+        return JsonResponse({"message": "Section deleted successfully"})
+    return JsonResponse({"error": "Invalid request"}, status=400)
+
 
 def get_exam_details(request, int_exam_id):
     # Get the internal exam object by id
@@ -1438,3 +1460,74 @@ def get_exam_details(request, int_exam_id):
     }
 
     return JsonResponse(exam_details)
+
+
+class GetQuestionsView(APIView):
+    def get(self, request):
+        marks = request.GET.get("marks")
+        if not marks:
+            return JsonResponse({"error": "Marks parameter is required"}, status=400)
+
+        questions = QuestionBank.objects.filter(marks=int(marks)).values("question_id", "question_text", "marks")
+        return JsonResponse(list(questions), safe=False)
+    
+    
+    
+class AddExamQuestionsView(APIView):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            section = ExamSection.objects.get(section_id=data["section_id"])
+            question_ids = data["question_ids"]
+
+            # Remove all existing questions that are not in the selected list
+            ExamQuestion.objects.filter(section=section).exclude(question_bank__question_id__in=question_ids).delete()
+
+            # Add the new questions
+            for q_id in question_ids:
+                # Check if the question already exists to avoid duplicates
+                question = QuestionBank.objects.get(question_id=q_id)
+                if not ExamQuestion.objects.filter(section=section, question_bank=question).exists():
+                    ExamQuestion.objects.create(section=section, question_bank=question)
+
+            return JsonResponse({"message": "Questions updated successfully!"}, status=201)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+def get_exam_sections(request, int_exam_id):
+    sections = ExamSection.objects.filter(internal_exam_id=int_exam_id)
+    sections_data = [
+        {
+            "id": section.section_id,
+            "name": section.section_name,
+            "numQuestions": section.no_of_questions,
+            "numToAnswer": section.no_of_questions_to_be_answered,
+            "ceilingMark": section.ceiling_mark,
+            "description": section.description
+        }
+        for section in sections
+    ]
+    return JsonResponse({"sections": sections_data})
+
+def get_questions_for_section(request, exam_id, section_id):
+    try:
+        # Fetch all ExamQuestions for the specific section
+        exam_questions = ExamQuestion.objects.filter(section_id=section_id)
+        
+        # Prepare the response data manually
+        questions_data = []
+        for exam_question in exam_questions:
+            question_bank = exam_question.question_bank  # Access related QuestionBank model
+            question_data = {
+                'question_id': exam_question.q_id,
+                'question_text': question_bank.question_text,  # From QuestionBank
+                'marks': question_bank.marks  # Marks from QuestionBank
+            }
+            questions_data.append(question_data)
+        
+        # Return the questions as a response
+        return JsonResponse(questions_data,safe=False)
+    
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400,safe=False)
