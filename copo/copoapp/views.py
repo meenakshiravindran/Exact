@@ -29,6 +29,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
+import os
+import subprocess
+import base64
+
+
+
 class UserRegistrationView(APIView):
     def post(self, request):
         data = request.data
@@ -1522,7 +1528,8 @@ def get_questions_for_section(request, exam_id, section_id):
             question_data = {
                 'question_id': exam_question.q_id,
                 'question_text': question_bank.question_text,  # From QuestionBank
-                'marks': question_bank.marks  # Marks from QuestionBank
+                'marks': question_bank.marks , # Marks from QuestionBank
+                'co':exam_question.question_bank.co.co_label
             }
             questions_data.append(question_data)
         
@@ -1531,3 +1538,77 @@ def get_questions_for_section(request, exam_id, section_id):
     
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400,safe=False)
+    
+EXAM_TEMPLATE = r"""
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage[margin=1in]{geometry}
+\begin{document}
+\begin{center}
+    \textbf{%s - %s}\\
+\end{center}
+
+\begin{flushleft}
+\textbf{Date:} %s \quad \textbf{Faculty:} %s \hfill \textbf{Max Marks:} %s \quad \textbf{Duration:} %s mins
+\end{flushleft}
+
+%s
+\end{document}
+"""
+def generate_sections_content(sections):
+    content = ""
+    for section in sections:
+        content += f"\n\\section{{{section['name']}}}\n{section['description']}\n\n"
+        for idx, question in enumerate(section['questions'], 1):
+            content += (
+                f"\\textbf{{Q{idx}:}} {question['text']} \\hfill Marks: {question['marks']} \\\\\n"
+                f"\\hspace*{{\\fill}}[{question['co']}]\n\n"
+            )
+    return content
+
+
+@csrf_exempt
+def generate_exam_preview(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            
+            sections_content = generate_sections_content(data['sections'])
+            tex_content = EXAM_TEMPLATE % (
+                data['exam_name'],
+                data['course_name'],
+                data['date'],
+                data['faculty_name'],
+                data['max_marks'],
+                data['duration'],
+                sections_content
+            )
+
+            # Write and compile LaTeX
+            with open("exam_temp.tex", "w") as f:
+                f.write(tex_content)
+
+            subprocess.run(["pdflatex", "-interaction=nonstopmode", "exam_temp.tex"], 
+                         stdout=subprocess.PIPE)
+
+            # Convert to PNG
+            subprocess.run(["pdftoppm", "-png", "exam_temp.pdf", "exam_temp"],
+                         stdout=subprocess.PIPE)
+            os.rename("exam_temp-1.png", "exam_temp.png")
+
+            # Convert to base64
+            with open("exam_temp.png", "rb") as img_file:
+                img_base64 = base64.b64encode(img_file.read()).decode()
+
+            # Cleanup
+            for file in ["exam_temp.aux", "exam_temp.log", "exam_temp.pdf", 
+                        "exam_temp.tex", "exam_temp.png"]:
+                if os.path.exists(file):
+                    os.remove(file)
+
+            return JsonResponse({"image": img_base64})
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    return JsonResponse({"error": "Invalid request"}, status=400)

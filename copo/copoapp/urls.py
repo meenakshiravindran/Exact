@@ -69,4 +69,5 @@ urlpatterns = [
      path("add-exam-questions/", views.AddExamQuestionsView.as_view(), name="add-exam-questions"),
      path('questions/by-marks/', views.GetQuestionsView.as_view(), name='get-questions-by-marks'),
      path('exam/<int:exam_id>/sections/<int:section_id>/questions/', views.get_questions_for_section, name='get_questions_for_section'),
+     path('exam-preview/', views.generate_exam_preview, name='exam-preview'),
 ]
