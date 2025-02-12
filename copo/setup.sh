@@ -4,9 +4,9 @@
 echo "Updating package lists..."
 sudo apt-get update -y
 
-# Install poppler-utils
-echo "Installing poppler-utils..."
-sudo apt-get install -y poppler-utils
+# Install texlive
+echo "Installing texlive..."
+sudo apt-get install -y texlive
 
 # Check if pip is installed
 if ! command -v pip &> /dev/null
