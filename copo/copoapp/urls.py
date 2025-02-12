@@ -70,4 +70,7 @@ urlpatterns = [
      path('questions/by-marks/', views.GetQuestionsView.as_view(), name='get-questions-by-marks'),
      path('exam/<int:exam_id>/sections/<int:section_id>/questions/', views.get_questions_for_section, name='get_questions_for_section'),
      path('exam-preview/', views.generate_exam_preview, name='exam-preview'),
+     path("delete-internal-exam/<int:exam_id>/", views.delete_internal_exam, name="delete-internal-exam"),
+     path("exam-sections/update/<int:section_id>/", views.update_exam_section, name="update_exam_section"),
+     path("dashboard-stats/", views.get_dashboard_stats, name="get_dashboard_stats"),
 ]

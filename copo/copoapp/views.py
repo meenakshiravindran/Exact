@@ -200,7 +200,7 @@ def get_faculty(request):
     try:
         faculty_list = Faculty.objects.all()
         faculty_data = [
-            {"faculty_id": faculty.faculty_id, "name": faculty.name}
+            {"faculty_id": faculty.faculty_id, "name": faculty.name, "dept":faculty.dept.dept_name}
             for faculty in faculty_list
         ]
         return JsonResponse(faculty_data, safe=False, status=200)
@@ -1612,3 +1612,51 @@ def generate_exam_preview(request):
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request"}, status=400)
+@csrf_exempt
+def delete_internal_exam(request, exam_id):
+    exam = get_object_or_404(InternalExam, int_exam_id=exam_id)
+    exam.delete()
+    return JsonResponse({"message": "Internal exam deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+@csrf_exempt
+def update_exam_section(request, section_id):
+    if request.method == "PUT":
+        try:
+            section = get_object_or_404(ExamSection, section_id=section_id)
+            data = json.loads(request.body)
+
+            section.section_name = data.get("section_name", section.section_name)
+            section.no_of_questions = data.get("no_of_questions", section.no_of_questions)
+            section.no_of_questions_to_be_answered = data.get("no_of_questions_to_be_answered", section.no_of_questions_to_be_answered)
+            section.ceiling_mark = data.get("ceiling_mark", section.ceiling_mark)
+            section.description = data.get("description", section.description)
+
+            section.save()
+
+            return JsonResponse({
+                "message": "Section updated successfully",
+                "section": {
+                    "section_id": section.section_id,
+                    "section_name": section.section_name,
+                    "no_of_questions": section.no_of_questions,
+                    "no_of_questions_to_be_answered": section.no_of_questions_to_be_answered,
+                    "ceiling_mark": section.ceiling_mark,
+                    "description": section.description,
+                }
+            }, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
+
+def get_dashboard_stats(request):
+    stats = {
+        "faculty": Faculty.objects.count(),
+        "courses": Course.objects.count(),
+        "batches": Batch.objects.count(),
+        "students": Student.objects.count(),
+        "levels": Level.objects.count(),
+        "programmes": Programme.objects.count(),
+    }
+    return JsonResponse(stats)
