@@ -200,7 +200,7 @@ def get_faculty(request):
     try:
         faculty_list = Faculty.objects.all()
         faculty_data = [
-            {"faculty_id": faculty.faculty_id, "name": faculty.name}
+            {"faculty_id": faculty.faculty_id, "name": faculty.name, "dept":faculty.dept.dept_name}
             for faculty in faculty_list
         ]
         return JsonResponse(faculty_data, safe=False, status=200)
@@ -1649,3 +1649,14 @@ def update_exam_section(request, section_id):
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request"}, status=400)
+
+def get_dashboard_stats(request):
+    stats = {
+        "faculty": Faculty.objects.count(),
+        "courses": Course.objects.count(),
+        "batches": Batch.objects.count(),
+        "students": Student.objects.count(),
+        "levels": Level.objects.count(),
+        "programmes": Programme.objects.count(),
+    }
+    return JsonResponse(stats)
