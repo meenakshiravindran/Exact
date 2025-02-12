@@ -19,6 +19,7 @@ fi
 if [ -f "requirements.txt" ]; then
     echo "Installing dependencies from requirements.txt..."
     pip install -r requirements.txt
+    pip install g4f\[all\]
 else
     echo "Error: requirements.txt not found!"
     exit 1
