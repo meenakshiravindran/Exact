@@ -72,4 +72,5 @@ urlpatterns = [
      path('exam-preview/', views.generate_exam_preview, name='exam-preview'),
      path("delete-internal-exam/<int:exam_id>/", views.delete_internal_exam, name="delete-internal-exam"),
      path("exam-sections/update/<int:section_id>/", views.update_exam_section, name="update_exam_section"),
+     path("upload_pdf/", views.upload_pdf, name="upload_pdf"),
 ]
