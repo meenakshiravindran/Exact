@@ -5,6 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
 from django.http import JsonResponse
 import json
+import re
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.validators import validate_email
 from .models import (
@@ -32,8 +33,8 @@ from django.shortcuts import get_object_or_404
 import os
 import subprocess
 import base64
-
-
+import fitz  # PyMuPDF
+from g4f.client import Client
 
 class UserRegistrationView(APIView):
     def post(self, request):
@@ -1650,6 +1651,83 @@ def update_exam_section(request, section_id):
 
     return JsonResponse({"error": "Invalid request"}, status=400)
 
+
+# Initialize GPT-4 client (g4f)
+client = Client()
+
+def extract_text_from_pdf(pdf_path):
+    """Extracts text from the uploaded PDF file."""
+    text = ""
+    with fitz.open(pdf_path) as doc:
+        for page in doc:
+            text += page.get_text("text") + "\n"
+    return text
+
+
+def generate_questions_from_text(text, marks=5):
+    """Generate questions based on extracted text using GPT-4."""
+    prompt = f"""Generate {marks}-mark questions from the following content:\n{text} 
+                Return the questions as a JSON array of strings, where each item is a question."""
+
+    # Using g4f's client to call GPT-4 and generate questions
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        web_search=False
+    )
+
+    # Extracting and cleaning up the JSON response
+    raw_response = response.choices[0].message.content.strip()
+    
+    # Use regex to extract JSON array from the response
+    json_match = re.search(r"\[.*\]", raw_response, re.DOTALL)
+    
+    if json_match:
+        json_str = json_match.group(0)  # Extract the JSON array as a string
+        
+        try:
+            # Convert JSON string to Python list
+            questions_list = json.loads(json_str)
+            
+            # Format as numbered list for React display
+            formatted_questions = "\n".join([f"{i+1}. {q}" for i, q in enumerate(questions_list)])
+            return formatted_questions
+        
+        except json.JSONDecodeError as e:
+            print("JSON Decode Error:", e)
+            print("Raw Response:", raw_response)
+            return "Error: Could not parse questions. Please try again."
+    else:
+        return "Error: No valid questions found in the response."
+
+@csrf_exempt
+def upload_pdf(request):
+    """Handles PDF upload, extracts text, and generates questions."""
+    if request.method == "POST" and request.FILES.get("pdf"):
+        pdf = request.FILES["pdf"]
+        marks = int(request.POST.get("marks", 5))  # Default to 5 marks
+
+        # Ensure the "uploads" directory exists
+        upload_dir = "uploads"
+        if not os.path.exists(upload_dir):
+            os.makedirs(upload_dir)
+
+        # Save the PDF file
+        saved_path = os.path.join(upload_dir, pdf.name)
+        with open(saved_path, "wb") as f:
+            for chunk in pdf.chunks():
+                f.write(chunk)
+
+        # Extract text from the PDF
+        extracted_text = extract_text_from_pdf(saved_path)
+
+        # Generate questions based on the extracted text
+        questions = generate_questions_from_text(extracted_text, marks)
+
+        # Return the generated questions as a response
+        return JsonResponse({"questions": questions})
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
 def get_dashboard_stats(request):
     stats = {
         "faculty": Faculty.objects.count(),
