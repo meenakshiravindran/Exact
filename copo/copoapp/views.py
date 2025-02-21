@@ -27,7 +27,6 @@ from .models import (
 )
 from datetime import datetime
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
 import os
@@ -35,6 +34,56 @@ import subprocess
 import base64
 import fitz  # PyMuPDF
 from g4f.client import Client
+from django.contrib.auth import authenticate
+from rest_framework.permissions import AllowAny
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
+
+
+User = get_user_model()
+
+
+class CustomTokenObtainPairView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        user = authenticate(username=username, password=password)
+        if user:
+            refresh = RefreshToken.for_user(user)
+
+            response_data = {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+                "role": user.role,
+                "full_name": f"{user.first_name} {user.last_name}",
+                "is_first_login": user.is_first_login,
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def reset_credentials(request):
+    """Allow user to update username and password on first login"""
+    new_username = request.data.get("new_username")
+    new_password = request.data.get("new_password")
+    
+    user = request.user
+    print("User",user.is_first_login)
+    if user.is_first_login and user.role=="teacher":
+        user.username = new_username
+        user.password = make_password(new_password) 
+        user.is_first_login = False
+        user.save()
+        return Response({"message": "Credentials updated successfully"}, status=status.HTTP_200_OK)
+    
+    return Response({"error": "User has already updated credentials"}, status=status.HTTP_400_BAD_REQUEST)
 
 class UserRegistrationView(APIView):
     def post(self, request):
@@ -1558,14 +1607,19 @@ EXAM_TEMPLATE = r"""
 """
 def generate_sections_content(sections):
     content = ""
+    question_counter = 1  
+    
     for section in sections:
         content += f"\n\\section{{{section['name']}}}\n{section['description']}\n\n"
-        content+="\\vspace{1em}\n"
-        for idx, question in enumerate(section['questions'], 1):
+        content += "\\vspace{1em}\n"
+        
+        for question in section["questions"]:
             content += (
-                f"\\textbf{{Q{idx}:}} {question['text']}"
+                f"\\textbf{{Q{question_counter}:}} {question['text']}"
                 f"\\hspace*{{\\fill}}[{question['co']}]\n\n"
             )
+            question_counter += 1 
+    
     return content
 
 
