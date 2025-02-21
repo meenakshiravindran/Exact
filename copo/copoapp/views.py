@@ -1546,7 +1546,7 @@ EXAM_TEMPLATE = r"""
 \usepackage[margin=1in]{geometry}
 \begin{document}
 \begin{center}
-    \textbf{%s - %s}\\
+    \Large\textbf{%s - %s}\\
 \end{center}
 
 \begin{flushleft}
@@ -1560,9 +1560,10 @@ def generate_sections_content(sections):
     content = ""
     for section in sections:
         content += f"\n\\section{{{section['name']}}}\n{section['description']}\n\n"
+        content+="\\vspace{1em}\n"
         for idx, question in enumerate(section['questions'], 1):
             content += (
-                f"\\textbf{{Q{idx}:}} {question['text']} \\hfill Marks: {question['marks']} \\\\\n"
+                f"\\textbf{{Q{idx}:}} {question['text']}"
                 f"\\hspace*{{\\fill}}[{question['co']}]\n\n"
             )
     return content
