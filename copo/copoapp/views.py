@@ -229,21 +229,33 @@ def edit_faculty(request, faculty_id):
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
 
+
 @csrf_exempt
 def delete_faculty(request, faculty_id):
     if request.method == "DELETE":
         try:
             faculty = Faculty.objects.get(faculty_id=faculty_id)
+            email = faculty.email  
+
+            # Delete Faculty Record
             faculty.delete()
+
+            # Delete Associated User Record
+            deleted, _ = CustomUser.objects.filter(email=email).delete()
+
             return JsonResponse(
-                {"message": "Faculty deleted successfully."}, status=200
+                {
+                    "message": "Faculty and associated user deleted successfully."
+                    if deleted
+                    else "Faculty deleted, but no associated user found.",
+                },
+                status=200,
             )
         except Faculty.DoesNotExist:
             return JsonResponse({"error": "Faculty not found."}, status=404)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
-
 
 # Get All Faculties name
 def get_faculty(request):
