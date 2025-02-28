@@ -98,7 +98,7 @@ class UserRegistrationView(APIView):
         role = data.get("role", "teacher")  # Default role is "teacher"
 
         # Validate required fields
-        if not all([username, password, email, first_name, last_name]):
+        if not all([username, password, email, first_name]):
             return Response({"error": "All fields are required."}, status=400)
 
         # Create user
@@ -1608,20 +1608,21 @@ EXAM_TEMPLATE = r"""
 def generate_sections_content(sections):
     content = ""
     question_counter = 1  
-    
+
     for section in sections:
         content += f"\n\\section{{{section['name']}}}\n{section['description']}\n\n"
         content += "\\vspace{1em}\n"
-        
+
         for question in section["questions"]:
+            question_text = question['text'].replace('\n', ' \\\\\n\\hspace*{1.5em}')  # Handle new lines separately
             content += (
-                f"\\textbf{{Q{question_counter}:}} {question['text']}"
+                f"\\noindent \\textbf{{Q{question_counter}:}} "
+                f"\\hangindent=1.5em {question_text} "
                 f"\\hspace*{{\\fill}}[{question['co']}]\n\n"
             )
             question_counter += 1 
-    
-    return content
 
+    return content
 
 @csrf_exempt
 def generate_exam_preview(request):
