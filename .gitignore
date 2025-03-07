@@ -1,0 +1,111 @@
+# Byte-compiled / optimized / DLL files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+
+# Django stuff:
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+
+# Environment variables
+.env
+*.env
+
+# Virtual environment
+venv/
+env/
+ENV/
+*.egg-info/
+.eggs/
+
+# Static files
+staticfiles/
+static/
+media/
+*.sass-cache
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Backup files
+*.bak
+*.old
+*.orig
+
+# Packaging
+*.egg
+dist/
+build/
+*.wheel
+
+# Pipfile
+Pipfile.lock
+
+# Celery
+celerybeat-schedule
+*.pid
+
+# Coverage reports
+htmlcov/
+.tox/
+.coverage
+coverage.xml
+*.cover
+
+# MyPy
+.mypy_cache/
+dmypy.json
+dmypy.log
+dmypy.db
+
+# Pytest
+.pytest_cache/
+test-results/
+
+# Ansible
+*.retry
+
+# Local dump files
+dump.rdb
+
+# Logs and debug info
+logs/
+*.log
+
+# Gunicorn
+gunicorn.conf.py
+instance/
+.installed.cfg35349
+
+# Generated translations
+*.mo
+
+# Cache
+.cache/
+__pycache__/
+
+# Django migrations
+**/migrations/**
+!**/migrations/__init__.py
+
+**/uploads/
