@@ -24,6 +24,7 @@ urlpatterns = [
      path('faculties/edit/<int:faculty_id>/', views.edit_faculty, name='edit-faculty'),
      path('faculties/delete/<int:faculty_id>/', views.delete_faculty, name='delete-faculty'),
      path('faculties/<int:faculty_id>/', views.get_faculty_details, name='get-faculty-details'),
+     path("upload-faculty-csv/", views.FacultyCSVUploadView.as_view(), name="upload_faculty_csv"),
      
      path("add-course/", views.CourseView.as_view(), name="add-course"),
      path("courses/edit/<int:course_id>/", views.edit_course, name="edit-course"),
