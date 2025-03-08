@@ -1888,3 +1888,80 @@ def upload_courses_csv(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+class FacultyCSVUploadView(APIView):
+    def post(self, request):
+        file = request.FILES.get("file")
+        if not file:
+            return Response({"error": "No file uploaded"}, status=400)
+
+        try:
+            df = pd.read_csv(file, dtype=str)
+
+            created_faculty = []
+            skipped_faculty = []
+
+            for _, row in df.iterrows():
+                name = str(row.get("name", "")).strip()
+                designation = str(row.get("designation_name", "")).strip()
+                dept_name = str(row.get("dept_name", "")).strip()
+                email = str(row.get("email", "")).strip()
+                phone_no = str(row.get("mob", "")).strip() or "123"  # Default password if empty
+
+                # Ignore records without a valid email
+                if not email or email.lower() == "nan":
+                    continue
+
+                # Check if email already exists
+                if Faculty.objects.filter(email=email).exists() or User.objects.filter(email=email).exists():
+                    skipped_faculty.append(name)
+                    continue  # Skip record if email already exists
+
+                # Split name into first and last name
+                name_parts = name.split(" ", 1)
+                first_name = name_parts[0]
+                last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+                # Set username as email prefix (before @)
+                username = email.split("@")[0]
+
+                # Fetch or create department
+                try:
+                    department = Department.objects.get(dept_name=dept_name)
+                except ObjectDoesNotExist:
+                    return Response({"error": f"Department '{dept_name}' does not exist"}, status=400)
+
+                # Create Faculty record
+                faculty = Faculty.objects.create(
+                    name=name,
+                    dept=department,
+                    email=email,
+                    phone_no=phone_no
+                )
+                created_faculty.append(faculty.name)
+
+                # Register user via UserRegistrationView
+                user_data = {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "email": email,
+                    "username": username,
+                    "password": phone_no,  # Phone number as password
+                    "role": "teacher"
+                }
+
+                user_view = UserRegistrationView()
+                request._request.data = user_data  # Set request data properly
+                response = user_view.post(request._request)
+ 
+                if response.status_code != 201:
+                    return Response({"error": f"Failed to create user for {name}", "details": response.data}, status=400)
+
+            return Response({
+                "message": "Faculty records processed successfully",
+                "created": created_faculty,
+                "skipped": skipped_faculty
+            }, status=201)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
