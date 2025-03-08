@@ -6,6 +6,7 @@ from rest_framework import status
 from django.http import JsonResponse
 import json
 import re
+import io
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.validators import validate_email
 from django.core.files.storage import default_storage
@@ -343,7 +344,7 @@ class CourseView(APIView):
         data = request.data
 
         # Manual validation
-        required_fields = ["title", "dept", "course_code","syllabus_year","programme","no_of_cos","semester","credits"]
+        required_fields = ["title", "dept", "course_code","syllabus_year","no_of_cos","semester","credits"]
         for field in required_fields:
             if field not in data:
                 return Response(
@@ -367,13 +368,6 @@ class CourseView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         
-        try:
-            programme = Programme.objects.get(programme_name=data["programme"])
-        except ObjectDoesNotExist:
-            return Response(
-                {"programme": "The specified department does not exist."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
         # Create Course instance
         course = Course(
@@ -381,7 +375,6 @@ class CourseView(APIView):
             dept=department,  # Assign the Department instance
             course_code=data["course_code"],
             syllabus_year=data["syllabus_year"],
-            programme=programme,
             no_of_cos=data["no_of_cos"],
             semester=data["semester"],
             credits=data["credits"]
@@ -415,8 +408,6 @@ def edit_course(request, course_id):
                 course.syllabus_year = data["syllabus_year"]
             if "no_of_cos" in data:
                 course.no_of_cos = data["no_of_cos"]
-            if "programme" in data:
-                course.programme.programme_name = data["programme"]
             course.save()
             return JsonResponse(
                 {"message": "Course updated successfully."}, status=200
@@ -452,7 +443,7 @@ def get_courses(request):
     try:
         course_list = Course.objects.all()
         course_data = [
-            {"course_id": course.course_id, "title": course.title,"dept":course.dept.dept_name,"programme":course.programme.programme_name}
+            {"course_id": course.course_id, "title": course.title,"dept":course.dept.dept_name}
             for course in course_list
         ]
         return JsonResponse(course_data, safe=False, status=200)
@@ -473,7 +464,6 @@ def get_course_details(request, course_id):
                 "course_code": course.course_code,
                 "semester":course.semester,
                 "credits":course.credits,
-                "programme":course.programme.programme_name,
                 "syllabus_year":course.syllabus_year,
                 "no_of_cos":course.no_of_cos
 
@@ -485,15 +475,15 @@ def get_course_details(request, course_id):
             return JsonResponse({"error": str(e)}, status=400)
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
-def get_course_by_programme(request, programme_id):
-    if request.method == "GET":
-        programme = get_object_or_404(Programme, programme_id=programme_id)
-        course = Course.objects.filter(programme=programme).values(
-           "course_id","title"
-        )
-        return JsonResponse(list(course), safe=False, status=200)
+# def get_course_by_programme(request, programme_id):
+#     if request.method == "GET":
+#         programme = get_object_or_404(Programme, programme_id=programme_id)
+#         course = Course.objects.filter(programme=programme).values(
+#            "course_id","title"
+#         )
+#         return JsonResponse(list(course), safe=False, status=200)
     
-    return JsonResponse({"error": "Invalid request method."}, status=405)
+#     return JsonResponse({"error": "Invalid request method."}, status=405)
 
 
 # Add a Batch
@@ -1857,3 +1847,44 @@ def upload_student_data(request):
             return JsonResponse({"error": str(e)}, status=400)
 
     return JsonResponse({"error": "Invalid request"}, status=400)
+
+
+@csrf_exempt
+def upload_courses_csv(request):
+    if request.method == 'POST' and request.FILES.get('file'):
+        try:
+            csv_file = request.FILES['file']
+            if not csv_file.name.endswith('.csv'):
+                return JsonResponse({'error': 'Invalid file format. Please upload a CSV file.'}, status=400)
+
+            # Read CSV file into pandas DataFrame
+            df = pd.read_csv(io.StringIO(csv_file.read().decode('utf-8')))
+
+            required_columns = {'course_code', 'course_title', 'dept_name', 'sem', 'credits', 'syllabus_year'}
+            if not required_columns.issubset(df.columns):
+                return JsonResponse({'error': 'Invalid CSV format. Required columns: course_code, course_title, dept_name, sem, credits, syllabus_year'}, status=400)
+
+            courses_to_create = []
+            for _, row in df.iterrows():
+                try:
+                    department = Department.objects.get(dept_name=row['dept_name'])  # Get Department instance
+                    course = Course(
+                        course_code=row['course_code'],
+                        title=row['course_title'],
+                        dept=department,  # Assign the Department instance
+                        semester=row['sem'],
+                        credits=row['credits'],
+                        syllabus_year=row['syllabus_year'],
+                        no_of_cos=1  # Default value
+                    )
+                    courses_to_create.append(course)
+                except ObjectDoesNotExist:
+                    return JsonResponse({'error': f'Department with name "{row["dept_name"]}" does not exist.'}, status=400)
+
+            Course.objects.bulk_create(courses_to_create)  # Bulk insert all courses at once
+            return JsonResponse({'message': 'Courses uploaded successfully!'}, status=201)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request'}, status=400)

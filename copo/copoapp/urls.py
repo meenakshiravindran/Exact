@@ -30,7 +30,8 @@ urlpatterns = [
      path("courses/delete/<int:course_id>/", views.delete_course, name="delete-course"),
      path("get-courses/", views.get_courses, name="get-courses"),
      path("courses/<int:course_id>/", views.get_course_details, name="get-course-details"),
-     path("courses/by-programme/<int:programme_id>/", views.get_course_by_programme, name="get-course-by_programme"),
+     # path("courses/by-programme/<int:programme_id>/", views.get_course_by_programme, name="get-course-by_programme"),
+     path('upload-courses/', views.upload_courses_csv, name='upload-courses'),
      
      path('add-batch/', views.add_batch, name='add_batch'),
      path('batches/edit/<int:batch_id>/', views.edit_batch, name='edit_batch'),
