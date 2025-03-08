@@ -45,13 +45,12 @@ class Programme(models.Model):
 
 class Course(models.Model):
     course_id = models.AutoField(primary_key=True)
-    course_code = models.CharField(max_length=50, unique=True)
+    course_code = models.CharField(max_length=50, unique=False)
     title = models.CharField(max_length=100)
     dept = models.ForeignKey(Department, on_delete=models.CASCADE)
     semester = models.IntegerField()
     credits = models.IntegerField()
     no_of_cos = models.IntegerField()
-    programme = models.ForeignKey(Programme, on_delete=models.CASCADE)
     syllabus_year = models.IntegerField()
 
     def __str__(self):
