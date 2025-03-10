@@ -1063,7 +1063,6 @@ def get_cos(request):
                 "co_label": co.co_label,
                 "co_description": co.co_description,
                 "course": co.course.title,
-                "programme":co.course.programme.programme_name
             }
             for co in co_list
         ]
