@@ -1440,7 +1440,6 @@ def get_questions(request):
                 "question_text": question.question_text,
                 "marks": question.marks,
                 "course": question.course.title,
-                "programme": question.course.programme.programme_name,
                 "co_label": question.co.co_label,
             }
             for question in question_list
