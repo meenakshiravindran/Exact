@@ -74,7 +74,7 @@ urlpatterns = [
      
      path('add-internal-exam/', views.InternalExamView.as_view(), name='add_internal_exam'),
      path('get-internal-exams/', views.FacultyInternalExamsView.as_view(), name='get-internal-exam'),
-     
+     path("faculty-batches-exams/", views.FacultyBatchesAndExamsView.as_view(), name="faculty-batches-exams"),
      path('question/edit/<int:question_id>/', views.edit_question, name='edit-question'),
      path("question/<int:question_id>/", views.get_question_details, name="get-question-details"),
      path("get-questions/", views.get_questions, name="get-questions"),

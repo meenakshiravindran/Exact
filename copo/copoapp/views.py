@@ -1366,6 +1366,38 @@ class FacultyInternalExamsView(APIView):
         )
 
         return Response(exams, status=status.HTTP_200_OK)
+    
+    
+class FacultyBatchesAndExamsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            # Get faculty details
+            faculty = get_object_or_404(Faculty, email=request.user.email)
+
+            # Get batches assigned to the faculty
+            batches = Batch.objects.filter(faculty_id=faculty)
+
+            # Fetching all internal exams related to those batches
+            batch_data = []
+            for batch in batches:
+                exams = InternalExam.objects.filter(batch=batch).values(
+                    "int_exam_id", "exam_name", "duration", "max_marks"
+                )
+                batch_data.append({
+                    "batch_id": batch.batch_id,
+                    "course_title": batch.course.title,
+                    "year": batch.year,
+                    "part": batch.part,
+                    "active": batch.active,
+                    "exams": list(exams),  # Convert queryset to list
+                })
+
+            return Response(batch_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
 def edit_question(request, question_id):
@@ -1440,7 +1472,6 @@ def get_questions(request):
                 "question_text": question.question_text,
                 "marks": question.marks,
                 "course": question.course.title,
-                "programme": question.course.programme.programme_name,
                 "co_label": question.co.co_label,
             }
             for question in question_list
@@ -1724,10 +1755,12 @@ def extract_text_from_pdf(pdf_path):
     return text
 
 
-def generate_questions_from_text(text, marks=5):
+def generate_questions_from_text(text, marks=5, no_of_questions=5):
     """Generate questions based on extracted text using GPT-4."""
-    prompt = f"""Generate {marks}-mark questions from the following content:\n{text} 
-                Return the questions as a JSON array of strings, where each item is a question."""
+    prompt = f"""Generate {no_of_questions} questions, each worth {marks} marks, from the following content:
+                \n{text} 
+                Return the questions as a JSON array of strings without numbering, only the questions."""
+
 
     # Using g4f's client to call GPT-4 and generate questions
     response = client.chat.completions.create(
@@ -1766,6 +1799,7 @@ def upload_pdf(request):
     if request.method == "POST" and request.FILES.get("pdf"):
         pdf = request.FILES["pdf"]
         marks = int(request.POST.get("marks", 5))  # Default to 5 marks
+        no_of_questions = int(request.POST.get("no_of_questions", 5))
 
         # Ensure the "uploads" directory exists
         upload_dir = "uploads"
@@ -1782,7 +1816,7 @@ def upload_pdf(request):
         extracted_text = extract_text_from_pdf(saved_path)
 
         # Generate questions based on the extracted text
-        questions = generate_questions_from_text(extracted_text, marks)
+        questions = generate_questions_from_text(extracted_text, marks, no_of_questions)
 
         # Return the generated questions as a response
         return JsonResponse({"questions": questions})
@@ -1902,7 +1936,6 @@ class FacultyCSVUploadView(APIView):
 
             for _, row in df.iterrows():
                 name = str(row.get("name", "")).strip()
-                designation = str(row.get("designation_name", "")).strip()
                 dept_name = str(row.get("dept_name", "")).strip()
                 email = str(row.get("email", "")).strip()
                 phone_no = str(row.get("mob", "")).strip() or "123"  # Default password if empty
