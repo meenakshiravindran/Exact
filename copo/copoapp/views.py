@@ -1366,6 +1366,38 @@ class FacultyInternalExamsView(APIView):
         )
 
         return Response(exams, status=status.HTTP_200_OK)
+    
+    
+class FacultyBatchesAndExamsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            # Get faculty details
+            faculty = get_object_or_404(Faculty, email=request.user.email)
+
+            # Get batches assigned to the faculty
+            batches = Batch.objects.filter(faculty_id=faculty)
+
+            # Fetching all internal exams related to those batches
+            batch_data = []
+            for batch in batches:
+                exams = InternalExam.objects.filter(batch=batch).values(
+                    "int_exam_id", "exam_name", "duration", "max_marks"
+                )
+                batch_data.append({
+                    "batch_id": batch.batch_id,
+                    "course_title": batch.course.title,
+                    "year": batch.year,
+                    "part": batch.part,
+                    "active": batch.active,
+                    "exams": list(exams),  # Convert queryset to list
+                })
+
+            return Response(batch_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
 def edit_question(request, question_id):
@@ -1440,7 +1472,6 @@ def get_questions(request):
                 "question_text": question.question_text,
                 "marks": question.marks,
                 "course": question.course.title,
-                "programme": question.course.programme.programme_name,
                 "co_label": question.co.co_label,
             }
             for question in question_list
