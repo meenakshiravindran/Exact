@@ -41,7 +41,7 @@ from django.contrib.auth import authenticate
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
-
+from django.http import HttpResponse
 
 User = get_user_model()
 
@@ -1683,23 +1683,18 @@ def generate_exam_preview(request):
             subprocess.run(["pdflatex", "-interaction=nonstopmode", "exam_temp.tex"], 
                          stdout=subprocess.PIPE)
 
-            # Convert to PNG
-            subprocess.run(["pdftoppm", "-png", "exam_temp.pdf", "exam_temp"],
-                         stdout=subprocess.PIPE)
-            os.rename("exam_temp-1.png", "exam_temp.png")
+            # Return the PDF file
+            with open("exam_temp.pdf", "rb") as pdf_file:
+                response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+                response['Content-Disposition'] = 'inline; filename=exam_preview.pdf'
+                
+                # Cleanup
+                for file in ["exam_temp.aux", "exam_temp.log", "exam_temp.pdf", 
+                            "exam_temp.tex"]:
+                    if os.path.exists(file):
+                        os.remove(file)
 
-            # Convert to base64
-            with open("exam_temp.png", "rb") as img_file:
-                img_base64 = base64.b64encode(img_file.read()).decode()
-
-            # Cleanup
-            for file in ["exam_temp.aux", "exam_temp.log", "exam_temp.pdf", 
-                        "exam_temp.tex", "exam_temp.png"]:
-                if os.path.exists(file):
-                    os.remove(file)
-
-            return JsonResponse({"image": img_base64})
-
+                return response
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
