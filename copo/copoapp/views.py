@@ -1750,40 +1750,38 @@ def extract_text_from_pdf(pdf_path):
     return text
 
 
-def generate_questions_from_text(text, marks=5, no_of_questions=5):
-    """Generate questions based on extracted text using GPT-4."""
-    prompt = f"""Generate {no_of_questions} questions, each worth {marks} marks, from the following content:
-                \n{text} 
-                Return the questions as a JSON array of strings without numbering, only the questions."""
+def generate_questions_from_text(text, question_type="short answer", no_of_questions=5):
+    """Generate questions using GPT-4 based on extracted text."""
+    prompt = f"""
+    You are a knowledgeable university professor. Generate {no_of_questions} questions based on the following text:
 
+    {text}
 
-    # Using g4f's client to call GPT-4 and generate questions
+    The questions should be of the type: "{question_type}" — meaning the expected *answers* should be of that type. 
+    For example:
+    - "one-word" → answerable with a single word (e.g., definitions, names, terms)
+    - "short answer" → brief explanations or sentences
+    - "essay" → detailed, long-form answers
+
+    Return the questions as a JSON array of strings — no numbering, no extra formatting, just a plain array of questions.
+    """
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         web_search=False
     )
 
-    # Extracting and cleaning up the JSON response
     raw_response = response.choices[0].message.content.strip()
-    
-    # Use regex to extract JSON array from the response
     json_match = re.search(r"\[.*\]", raw_response, re.DOTALL)
-    
+
     if json_match:
-        json_str = json_match.group(0)  # Extract the JSON array as a string
-        
         try:
-            # Convert JSON string to Python list
-            questions_list = json.loads(json_str)
-            
-            # Format as numbered list for React display
+            questions_list = json.loads(json_match.group(0))
             formatted_questions = "\n".join([f"{i+1}. {q}" for i, q in enumerate(questions_list)])
             return formatted_questions
-        
         except json.JSONDecodeError as e:
             print("JSON Decode Error:", e)
-            print("Raw Response:", raw_response)
             return "Error: Could not parse questions. Please try again."
     else:
         return "Error: No valid questions found in the response."
@@ -1793,7 +1791,7 @@ def upload_pdf(request):
     """Handles PDF upload, extracts text, and generates questions."""
     if request.method == "POST" and request.FILES.get("pdf"):
         pdf = request.FILES["pdf"]
-        marks = int(request.POST.get("marks", 5))  # Default to 5 marks
+        question_type = request.POST.get("question_type", "short answer")
         no_of_questions = int(request.POST.get("no_of_questions", 5))
 
         # Ensure the "uploads" directory exists
@@ -1810,9 +1808,10 @@ def upload_pdf(request):
         # Extract text from the PDF
         extracted_text = extract_text_from_pdf(saved_path)
 
-        # Generate questions based on the extracted text
-        questions = generate_questions_from_text(extracted_text, marks, no_of_questions)
-
+        # Generate questions
+        questions = generate_questions_from_text(
+            extracted_text, question_type=question_type, no_of_questions=no_of_questions
+        )   
         # Return the generated questions as a response
         return JsonResponse({"questions": questions})
 
